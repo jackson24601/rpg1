@@ -18,7 +18,7 @@
         <svg
           class="scene-art"
           viewBox="0 0 800 600"
-          preserveAspectRatio="xMidYMid slice"
+          preserveAspectRatio="xMidYMax slice"
           xmlns="http://www.w3.org/2000/svg"
           role="img"
         >
@@ -159,22 +159,22 @@
           <!-- Foreground hill -->
           <path
             class="hill"
-            d="M0 400 C140 355, 280 380, 400 365 C530 350, 680 375, 800 345 L800 600 L0 600 Z"
+            d="M0 355 C140 310, 280 335, 400 320 C530 305, 680 330, 800 300 L800 600 L0 600 Z"
             fill="url(#nearHill)"
           />
           <rect width="800" height="600" fill="url(#dither)" opacity="0.28" />
 
           <!-- Path -->
           <path
-            d="M285 600 C335 510, 360 455, 400 405 C440 455, 465 510, 515 600"
+            d="M270 600 C330 480, 360 420, 400 360 C440 420, 470 480, 530 600"
             fill="#7a5c34"
             opacity="0.62"
           />
 
-          <!-- Heroes party (front and center-left) -->
-          <g class="heroes" transform="translate(40, 18) scale(1.22)">
+          <!-- Heroes party — kept in lower-middle safe zone for wide/cropped viewports -->
+          <g class="heroes" transform="translate(55, -10) scale(1.35)">
             <!-- Knight -->
-            <g class="hero hero-knight" transform="translate(170,355)">
+            <g class="hero hero-knight" transform="translate(155,300)">
               <ellipse cx="28" cy="118" rx="24" ry="8" fill="#142010" opacity="0.5" />
               <rect x="18" y="48" width="22" height="38" rx="3" fill="#6d7888" />
               <rect x="13" y="43" width="32" height="14" rx="2" fill="#8a95a5" />
@@ -194,7 +194,7 @@
             </g>
 
             <!-- Mage -->
-            <g class="hero hero-mage" transform="translate(260,368)">
+            <g class="hero hero-mage" transform="translate(250,312)">
               <ellipse cx="24" cy="110" rx="22" ry="7" fill="#142010" opacity="0.5" />
               <path d="M6 40 L42 40 L38 92 L10 92 Z" fill="#2f4f8a" />
               <path d="M4 37 L44 37 L39 50 L9 50 Z" fill="#3d63a8" />
@@ -211,7 +211,7 @@
             </g>
 
             <!-- Archer -->
-            <g class="hero hero-archer" transform="translate(350,360)">
+            <g class="hero hero-archer" transform="translate(345,305)">
               <ellipse cx="22" cy="114" rx="20" ry="7" fill="#142010" opacity="0.5" />
               <rect x="11" y="46" width="22" height="36" rx="3" fill="#6b4a2a" />
               <circle cx="22" cy="32" r="12" fill="#e0b089" />
@@ -231,7 +231,7 @@
             </g>
 
             <!-- Cleric -->
-            <g class="hero hero-cleric" transform="translate(435,372)">
+            <g class="hero hero-cleric" transform="translate(430,318)">
               <ellipse cx="22" cy="108" rx="20" ry="7" fill="#142010" opacity="0.5" />
               <path d="M6 42 L38 42 L36 90 L8 90 Z" fill="#d9d2c5" />
               <path d="M4 39 L40 39 L35 54 L9 54 Z" fill="#f0ebe1" />
