@@ -86,8 +86,8 @@ body {
   align-items: center;
   gap: 0.05em;
   font-family: "Luckiest Guy", "Comic Sans MS", cursive;
-  font-size: clamp(3.4rem, 12vw, 7.5rem);
-  line-height: 0.92;
+  font-size: clamp(3rem, 9.5vw, 6.4rem);
+  line-height: 0.9;
   letter-spacing: 0.04em;
   color: var(--gold);
   text-transform: uppercase;
