@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Choose Your Party — Dragon Quest</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&family=VT323&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="party.css" />
+  </head>
+  <body class="party-page">
+    <div class="party-backdrop" aria-hidden="true"></div>
+
+    <main class="party-shell">
+      <header class="party-header rpg-window">
+        <div class="party-header__row">
+          <a class="back-link" href="index.html">← Title</a>
+          <h1 class="party-title">Choose Your Party</h1>
+          <p class="party-count" id="partyCount" aria-live="polite">0 / 3 chosen</p>
+        </div>
+        <p class="party-subtitle">Select three adventurers to join your quest</p>
+      </header>
+
+      <section class="party-slots rpg-window" aria-label="Selected party members">
+        <h2 class="section-label">Your Party</h2>
+        <ol class="slot-row" id="slotRow">
+          <li class="slot" data-slot="0"><span class="slot__empty">Empty</span></li>
+          <li class="slot" data-slot="1"><span class="slot__empty">Empty</span></li>
+          <li class="slot" data-slot="2"><span class="slot__empty">Empty</span></li>
+        </ol>
+      </section>
+
+      <section class="class-select rpg-window" aria-label="Available classes">
+        <h2 class="section-label">Classes</h2>
+        <ul class="class-grid" id="classGrid"></ul>
+      </section>
+
+      <footer class="party-footer rpg-window">
+        <p class="detail-panel" id="detailPanel">
+          Click a class to learn more and add them to your party.
+        </p>
+        <button type="button" class="confirm-btn" id="confirmParty" disabled>
+          Form Party
+        </button>
+      </footer>
+    </main>
+
+    <script src="party.js"></script>
+  </body>
+</html>

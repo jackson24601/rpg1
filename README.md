@@ -1,6 +1,6 @@
 # Dragon Quest
 
-A basic 1990s-style role-playing game with SVGA-era title screen graphics.
+A basic 1990s-style role-playing game with SVGA / 16-bit JRPG title and party screens.
 
 ## Play
 
@@ -12,6 +12,9 @@ python3 -m http.server 8080
 
 Then visit `http://localhost:8080`.
 
-## Title screen
+## Screens
 
-The landing page features a medieval dusk scene: mountains and castle on the horizon, a dragon soaring overhead, and a party of heroes ready to adventure. Bubble-letter **Dragon Quest** branding sits above a centered **Begin Quest** button.
+1. **Title screen** (`index.html`) — medieval dusk scene, bubble-letter branding, **Begin Quest**
+2. **Party select** (`party.html`) — choose 3 of 12 classes with pixel-art portraits
+
+Selected party members are stored in `sessionStorage` under `dragonQuestParty`.

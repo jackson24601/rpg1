@@ -6,14 +6,10 @@ beginBtn?.addEventListener("click", () => {
   beginBtn.disabled = true;
 
   if (statusHint) {
-    statusHint.textContent = "Your quest begins…";
+    statusHint.textContent = "Gathering heroes…";
   }
 
   window.setTimeout(() => {
-    beginBtn.classList.remove("is-starting");
-    beginBtn.disabled = false;
-    if (statusHint) {
-      statusHint.textContent = "Party assembled. The road stretches beyond the mountains.";
-    }
-  }, 1800);
+    window.location.href = "party.html";
+  }, 700);
 });
