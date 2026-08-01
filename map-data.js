@@ -12,8 +12,9 @@ export const TERRAIN = {
 };
 
 /** Special / landmark cells — rendered as red scenes. */
+/** Keys are "x,y" (column, row). */
 export const SPECIALS = {
-  "0,7": "Dragon Castle",
+  "7,0": "Dragon Castle",
   "2,2": "Temple of Peace",
   "5,2": "Outlaw Hideout",
   "0,10": "Mines of Tyrol",
@@ -72,14 +73,16 @@ export function buildMap() {
       const key = `${x},${y}`;
       const code = RAW[y][x];
       const specialName = SPECIALS[key] || null;
-      const terrain = specialName ? TERRAIN.special : CODE[code];
+      const terrain = specialName || code === "S" ? TERRAIN.special : CODE[code];
+      const resolvedName =
+        specialName || (terrain === TERRAIN.special ? "Landmark" : labelFor(terrain));
       cells.push({
         x,
         y,
         terrain,
-        name: specialName || labelFor(terrain),
+        name: resolvedName,
         walkable: terrain !== TERRAIN.mountain,
-        special: Boolean(specialName),
+        special: terrain === TERRAIN.special,
       });
     }
   }
