@@ -14,10 +14,11 @@ Visit `http://localhost:8080`.
 
 1. **Title** (`index.html`) — Begin Quest
 2. **Party select** (`party.html`) — choose 3 of 12 classes
-3. **Overworld** (`game.html`) — each grid square is its own SVGA scene; move with on-screen arrows
+3. **Overworld** (`game.html`) — each grid square is its own SVGA scene; hold arrows to walk
 
 Selected party members are stored in `sessionStorage` under `dragonQuestParty`.
 The **first** hero chosen becomes the party leader sprite on the overworld.
+Hold an arrow key or D-pad button to walk around the scene; crossing an edge travels to the next scene.
 
 ## Overworld map
 
