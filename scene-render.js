@@ -47,40 +47,49 @@ export function renderSceneSvg(
   const w = neighborTerrain(cells, x, y, -1, 0);
   const seed = hash(x, y);
 
+  const isInitialForest = name === "Initial Sequence";
   const layers = [];
-  layers.push(skyLayer(terrain, special));
-  layers.push(groundLayer(terrain, special, seed));
 
-  if (n === TERRAIN.mountain || (y === 0 && terrain !== TERRAIN.mountain)) {
-    layers.push(mountainBand("north", seed));
-  }
-  if (s === TERRAIN.mountain) {
-    layers.push(mountainBand("south", seed + 3));
-  }
-  if (w === TERRAIN.mountain || terrain === TERRAIN.mountain) {
-    layers.push(mountainEdge("west", seed + 5));
-  }
-  if (e === TERRAIN.mountain || terrain === TERRAIN.mountain) {
-    layers.push(mountainEdge("east", seed + 7));
-  }
-
-  if (terrain === TERRAIN.forest || n === TERRAIN.forest || e === TERRAIN.forest) {
-    layers.push(forestCluster(seed, terrain === TERRAIN.forest ? "dense" : "edge"));
-  }
-  if (terrain === TERRAIN.meadow) {
-    layers.push(meadowFlowers(seed));
-  }
-  if (terrain === TERRAIN.swamp || s === TERRAIN.swamp || e === TERRAIN.swamp) {
-    layers.push(waterCorner(seed, terrain === TERRAIN.swamp));
-  }
-  if (terrain === TERRAIN.plains || terrain === TERRAIN.meadow) {
-    layers.push(distantTrees(seed));
-  }
-
-  if (special) {
+  if (isInitialForest) {
+    layers.push(skyLayer(TERRAIN.forest, false));
+    layers.push(groundLayer(TERRAIN.forest));
+    layers.push(deepForestScene(seed));
     layers.push(specialLandmark(name, seed));
-  } else if (name === "Plains" && seed % 5 === 0) {
-    layers.push(signpost(210, 120));
+  } else {
+    layers.push(skyLayer(terrain, special));
+    layers.push(groundLayer(terrain, special, seed));
+
+    if (n === TERRAIN.mountain || (y === 0 && terrain !== TERRAIN.mountain)) {
+      layers.push(mountainBand("north", seed));
+    }
+    if (s === TERRAIN.mountain) {
+      layers.push(mountainBand("south", seed + 3));
+    }
+    if (w === TERRAIN.mountain || terrain === TERRAIN.mountain) {
+      layers.push(mountainEdge("west", seed + 5));
+    }
+    if (e === TERRAIN.mountain || terrain === TERRAIN.mountain) {
+      layers.push(mountainEdge("east", seed + 7));
+    }
+
+    if (terrain === TERRAIN.forest || n === TERRAIN.forest || e === TERRAIN.forest) {
+      layers.push(forestCluster(seed, terrain === TERRAIN.forest ? "dense" : "edge"));
+    }
+    if (terrain === TERRAIN.meadow) {
+      layers.push(meadowFlowers(seed));
+    }
+    if (terrain === TERRAIN.swamp || s === TERRAIN.swamp || e === TERRAIN.swamp) {
+      layers.push(waterCorner(seed, terrain === TERRAIN.swamp));
+    }
+    if (terrain === TERRAIN.plains || terrain === TERRAIN.meadow) {
+      layers.push(distantTrees(seed));
+    }
+
+    if (special) {
+      layers.push(specialLandmark(name, seed));
+    } else if (name === "Plains" && seed % 5 === 0) {
+      layers.push(signpost(210, 120));
+    }
   }
 
   // Party leader stands in the traversable mid-foreground
@@ -107,6 +116,11 @@ export function renderSceneSvg(
         <linearGradient id="skySpecial" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stop-color="#5a2040"/>
           <stop offset="100%" stop-color="#c46b4a"/>
+        </linearGradient>
+        <linearGradient id="skyForestDeep" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#1a3d28"/>
+          <stop offset="55%" stop-color="#2f6b3a"/>
+          <stop offset="100%" stop-color="#4a8a48"/>
         </linearGradient>
         <pattern id="grass" width="8" height="8" patternUnits="userSpaceOnUse">
           <rect width="8" height="8" fill="#6dbd4e"/>
@@ -148,7 +162,11 @@ function skyLayer(terrain, special) {
     return `<rect width="${W}" height="78" fill="#6a7a55"/>`;
   }
   if (terrain === TERRAIN.forest) {
-    return `<rect width="${W}" height="78" fill="url(#skyDay)"/>`;
+    return `<rect width="${W}" height="82" fill="url(#skyForestDeep)"/>
+      <ellipse cx="40" cy="50" rx="55" ry="36" fill="#163822" opacity="0.55"/>
+      <ellipse cx="120" cy="42" rx="60" ry="40" fill="#1a4228" opacity="0.5"/>
+      <ellipse cx="210" cy="48" rx="70" ry="38" fill="#163822" opacity="0.55"/>
+      <ellipse cx="290" cy="40" rx="55" ry="34" fill="#1a4228" opacity="0.5"/>`;
   }
   return `<rect width="${W}" height="82" fill="url(#skyDay)"/>`;
 }
@@ -221,20 +239,47 @@ function tree(cx, cy, scale = 1) {
 
 function forestCluster(seed, mode) {
   const trees = [];
-  const count = mode === "dense" ? 9 : 4;
+  const count = mode === "dense" ? 9 : mode === "deep" ? 14 : 4;
   for (let i = 0; i < count; i += 1) {
-    const tx = 30 + ((seed + i * 37) % 260);
-    const ty = 110 + ((seed + i * 17) % 70);
-    const sc = 0.85 + ((seed + i) % 3) * 0.15;
+    const tx = 20 + ((seed + i * 37) % 280);
+    const ty = 105 + ((seed + i * 17) % 75);
+    const sc = 0.85 + ((seed + i) % 3) * 0.18;
     trees.push(tree(tx, ty, sc));
   }
   // denser back row for forests
-  if (mode === "dense") {
-    for (let i = 0; i < 6; i += 1) {
-      trees.push(tree(20 + i * 50 + (seed % 5), 95 + ((i + seed) % 3) * 4, 1.05));
+  if (mode === "dense" || mode === "deep") {
+    for (let i = 0; i < 7; i += 1) {
+      trees.push(tree(16 + i * 46 + (seed % 5), 90 + ((i + seed) % 3) * 4, 1.15));
+    }
+  }
+  if (mode === "deep") {
+    for (let i = 0; i < 8; i += 1) {
+      trees.push(tree(10 + i * 42 + ((seed * 3) % 7), 150 + ((i * 11) % 20), 1.25));
     }
   }
   return `<g class="forest">${trees.join("")}</g>`;
+}
+
+/** Dense woodland clearing used for the starting Initial Sequence scene. */
+function deepForestScene(seed) {
+  return `
+    <g class="deep-forest">
+      <!-- Canopy shade over the clearing -->
+      <rect y="70" width="${W}" height="${H - 70}" fill="#0f2a18" opacity="0.18"/>
+      ${forestCluster(seed + 11, "deep")}
+      <!-- Soft path through the trees -->
+      <path d="M145 224 C155 190, 150 160, 160 130 C170 110, 175 95, 168 80"
+        fill="none" stroke="#5a7a3a" stroke-width="18" opacity="0.35"/>
+      <path d="M145 224 C155 190, 150 160, 160 130 C170 110, 175 95, 168 80"
+        fill="none" stroke="#6b8f45" stroke-width="8" opacity="0.4"/>
+      <!-- Leaf litter / mushrooms -->
+      <ellipse cx="60" cy="180" rx="10" ry="4" fill="#3d5a28" opacity="0.7"/>
+      <ellipse cx="250" cy="170" rx="12" ry="5" fill="#3d5a28" opacity="0.65"/>
+      <circle cx="72" cy="176" r="3" fill="#c4543a"/>
+      <circle cx="78" cy="178" r="2.5" fill="#e8d48a"/>
+      <circle cx="242" cy="166" r="3" fill="#c4543a"/>
+    </g>
+  `;
 }
 
 function distantTrees(seed) {
@@ -314,10 +359,11 @@ function specialLandmark(name, seed) {
     case "Initial Sequence":
       return `
         <g class="landmark-start">
-          ${cottage(86, 120)}
-          ${signpost(150, 128)}
-          <circle cx="200" cy="150" r="10" fill="#c62828" opacity="0.9"/>
-          <circle cx="200" cy="150" r="4" fill="#f0c94d"/>
+          ${signpost(168, 132)}
+          <!-- Small quest marker in the forest clearing -->
+          <circle cx="200" cy="158" r="9" fill="#c62828" opacity="0.92"/>
+          <circle cx="200" cy="158" r="4" fill="#f0c94d"/>
+          <rect x="120" y="168" width="90" height="5" fill="#c62828" opacity="0.75"/>
         </g>`;
     case "Temple of Peace":
       return `
