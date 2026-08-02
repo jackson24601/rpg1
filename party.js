@@ -228,11 +228,15 @@ confirmBtn.addEventListener("click", () => {
 
   sessionStorage.setItem("dragonQuestParty", JSON.stringify(party));
   setDetail(
-    `Party ready: ${party.map((member) => member.name).join(", ")}. The adventure awaits!`
+    `Party ready: ${party.map((member) => member.name).join(", ")}. Entering the overworld…`
   );
-  confirmBtn.textContent = "Party Formed!";
+  confirmBtn.textContent = "Embarking…";
   confirmBtn.disabled = true;
   confirmBtn.classList.remove("is-ready");
+
+  window.setTimeout(() => {
+    window.location.href = "game.html";
+  }, 700);
 });
 
 buildGrid();
