@@ -5,17 +5,20 @@ import {
   buildMap,
   cellAt,
 } from "./map-data.js";
+import { renderSceneSvg, facingFromDelta } from "./scene-render.js";
 
 const cells = buildMap();
-const board = document.getElementById("board");
-const boardScroll = document.getElementById("boardScroll");
+const sceneFrame = document.getElementById("sceneFrame");
+const sceneCaption = document.getElementById("sceneCaption");
+const minimap = document.getElementById("minimap");
 const locationLabel = document.getElementById("locationLabel");
 const coordsLabel = document.getElementById("coordsLabel");
 const statusLine = document.getElementById("statusLine");
 const partyStrip = document.getElementById("partyStrip");
 
 const position = { ...START };
-const tileEls = new Map();
+let facing = "down";
+const miniEls = new Map();
 
 function loadParty() {
   try {
@@ -26,6 +29,11 @@ function loadParty() {
   } catch {
     return [];
   }
+}
+
+function getLeader() {
+  const party = loadParty();
+  return party[0] || null;
 }
 
 function renderPartyStrip() {
@@ -40,85 +48,55 @@ function renderPartyStrip() {
     return;
   }
 
-  party.forEach((member) => {
+  party.forEach((member, index) => {
     const li = document.createElement("li");
-    li.className = "party-chip";
+    li.className = "party-chip" + (index === 0 ? " is-leader" : "");
     li.innerHTML = `
       <img src="assets/characters/${member.id}.png" alt="" width="28" height="28" />
       <span>${member.name}</span>
+      ${index === 0 ? '<span class="party-chip__tag">leader</span>' : ""}
     `;
     partyStrip.appendChild(li);
   });
 }
 
-function shortLabel(name) {
-  if (name.length <= 14) return name;
-  return name.replace("Initial Sequence", "Start")
-    .replace("Temple of Peace", "Temple")
-    .replace("Outlaw Hideout", "Hideout")
-    .replace("Abandoned Ruins", "Ruins")
-    .replace("Witches' Lair", "Witches")
-    .replace("Mines of Tyrol", "Mines")
-    .replace("Dragon Castle", "Castle");
-}
-
-function buildBoard() {
+function buildMinimap() {
   const frag = document.createDocumentFragment();
-
   cells.forEach((cell) => {
     const tile = document.createElement("div");
-    tile.className = `tile tile--${cell.terrain}`;
-    tile.dataset.x = String(cell.x);
-    tile.dataset.y = String(cell.y);
+    tile.className = `mini-tile mini-tile--${cell.terrain}`;
+    tile.title = cell.name;
     tile.setAttribute("role", "gridcell");
-    tile.setAttribute("aria-label", cell.name);
-
-    if (cell.special || cell.terrain === "mountain") {
-      const label = document.createElement("p");
-      label.className = "tile__label";
-      label.textContent = shortLabel(cell.name);
-      tile.appendChild(label);
-    }
-
-    tileEls.set(`${cell.x},${cell.y}`, tile);
+    miniEls.set(`${cell.x},${cell.y}`, tile);
     frag.appendChild(tile);
   });
-
-  board.style.setProperty("--cols", String(COLS));
-  board.appendChild(frag);
+  minimap.style.setProperty("--cols", String(COLS));
+  minimap.appendChild(frag);
 }
 
 function setStatus(message) {
   statusLine.textContent = message;
 }
 
-function updateHud() {
+function renderScene() {
   const cell = cellAt(cells, position.x, position.y);
-  locationLabel.textContent = cell?.name ?? "Unknown";
+  const leader = getLeader();
+  const leaderId = leader?.id || "fighter";
+
+  sceneFrame.classList.remove("is-moving");
+  // force reflow so animation can replay
+  void sceneFrame.offsetWidth;
+  sceneFrame.classList.add("is-moving");
+  sceneFrame.innerHTML = renderSceneSvg(cells, cell, leaderId, facing);
+
+  locationLabel.textContent = cell.name;
   coordsLabel.textContent = `${position.x + 1}, ${position.y + 1}`;
+  sceneCaption.textContent = cell.special
+    ? `Special scene — ${cell.name}`
+    : `Scene: ${cell.name}`;
 
-  tileEls.forEach((el) => el.classList.remove("is-current"));
-  const current = tileEls.get(`${position.x},${position.y}`);
-  current?.classList.add("is-current");
-  scrollToParty();
-}
-
-function scrollToParty() {
-  const current = tileEls.get(`${position.x},${position.y}`);
-  if (!current || !boardScroll) return;
-
-  const tileRect = current.getBoundingClientRect();
-  const viewRect = boardScroll.getBoundingClientRect();
-  const offsetTop =
-    tileRect.top - viewRect.top + boardScroll.scrollTop - viewRect.height / 2 + tileRect.height / 2;
-  const offsetLeft =
-    tileRect.left - viewRect.left + boardScroll.scrollLeft - viewRect.width / 2 + tileRect.width / 2;
-
-  boardScroll.scrollTo({
-    top: Math.max(0, offsetTop),
-    left: Math.max(0, offsetLeft),
-    behavior: "smooth",
-  });
+  miniEls.forEach((el) => el.classList.remove("is-current"));
+  miniEls.get(`${position.x},${position.y}`)?.classList.add("is-current");
 }
 
 function tryMove(dx, dy) {
@@ -133,17 +111,23 @@ function tryMove(dx, dy) {
 
   if (!target.walkable) {
     setStatus("Impassable mountains block your path.");
+    facing = facingFromDelta(dx, dy);
+    renderScene();
     return;
   }
 
+  facing = facingFromDelta(dx, dy);
   position.x = nextX;
   position.y = nextY;
-  updateHud();
+  renderScene();
+
+  const leader = getLeader();
+  const who = leader ? leader.name : "Your party";
 
   if (target.special) {
-    setStatus(`Entered ${target.name}. (Encounters coming soon.)`);
+    setStatus(`${who} entered ${target.name}. (Encounters coming soon.)`);
   } else {
-    setStatus(`Your party travels through the ${target.name.toLowerCase()}.`);
+    setStatus(`${who} travels into the ${target.name.toLowerCase()} scene.`);
   }
 }
 
@@ -169,15 +153,16 @@ function bindControls() {
 }
 
 renderPartyStrip();
-buildBoard();
-updateHud();
+buildMinimap();
+renderScene();
 bindControls();
-setStatus("Your quest begins at the Initial Sequence. Mountains ring the land and cannot be crossed.");
 
-// Ensure starting tile is visible after layout.
-requestAnimationFrame(() => {
-  requestAnimationFrame(scrollToParty);
-});
+const leader = getLeader();
+setStatus(
+  leader
+    ? `${leader.name} leads the party at the Initial Sequence. Each square is its own scene — mountains cannot be crossed.`
+    : "Your quest begins at the Initial Sequence. Pick a party first so a hero can lead on the overworld."
+);
 
-// Quiet unused import warning for ROWS in bundlers; kept for map integrity checks.
 void ROWS;
+void COLS;

@@ -26,32 +26,40 @@
         <ul class="party-strip" id="partyStrip" aria-label="Your party"></ul>
       </header>
 
-      <section class="board-wrap rpg-window" aria-label="Overworld map">
-        <div class="board-scroll" id="boardScroll">
-          <div class="board" id="board" role="grid" aria-rowcount="24" aria-colcount="8"></div>
+      <section class="stage rpg-window" aria-label="Current scene">
+        <div class="scene-frame" id="sceneFrame">
+          <!-- SVG scene injected here -->
         </div>
+        <p class="scene-caption" id="sceneCaption">Entering the world…</p>
       </section>
 
-      <section class="controls rpg-window">
-        <p class="status" id="statusLine" aria-live="polite">
-          Use the arrows to move your party. Mountains are impassable.
-        </p>
-        <div class="dpad" role="group" aria-label="Move party">
-          <button type="button" class="dpad__btn dpad__up" data-dx="0" data-dy="-1" aria-label="Move north">
-            ▲
-          </button>
-          <button type="button" class="dpad__btn dpad__left" data-dx="-1" data-dy="0" aria-label="Move west">
-            ◀
-          </button>
-          <button type="button" class="dpad__btn dpad__ok" disabled aria-hidden="true">◆</button>
-          <button type="button" class="dpad__btn dpad__right" data-dx="1" data-dy="0" aria-label="Move east">
-            ▶
-          </button>
-          <button type="button" class="dpad__btn dpad__down" data-dx="0" data-dy="1" aria-label="Move south">
-            ▼
-          </button>
-        </div>
-      </section>
+      <div class="lower">
+        <section class="minimap-wrap rpg-window" aria-label="World map">
+          <h2 class="section-label">World</h2>
+          <div class="minimap" id="minimap" role="grid" aria-rowcount="24" aria-colcount="8"></div>
+        </section>
+
+        <section class="controls rpg-window">
+          <p class="status" id="statusLine" aria-live="polite">
+            Use the arrows to move to the next scene. Mountains are impassable.
+          </p>
+          <div class="dpad" role="group" aria-label="Move party">
+            <button type="button" class="dpad__btn dpad__up" data-dx="0" data-dy="-1" aria-label="Move north">
+              ▲
+            </button>
+            <button type="button" class="dpad__btn dpad__left" data-dx="-1" data-dy="0" aria-label="Move west">
+              ◀
+            </button>
+            <button type="button" class="dpad__btn dpad__ok" disabled aria-hidden="true">◆</button>
+            <button type="button" class="dpad__btn dpad__right" data-dx="1" data-dy="0" aria-label="Move east">
+              ▶
+            </button>
+            <button type="button" class="dpad__btn dpad__down" data-dx="0" data-dy="1" aria-label="Move south">
+              ▼
+            </button>
+          </div>
+        </section>
+      </div>
     </main>
 
     <script type="module" src="game.js"></script>
