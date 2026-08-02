@@ -14,12 +14,14 @@ Visit `http://localhost:8080`.
 
 1. **Title** (`index.html`) — Begin Quest
 2. **Party select** (`party.html`) — choose 3 of 12 classes
-3. **Overworld** (`game.html`) — 24×8 board ringed by impassable mountains; move with on-screen arrows
+3. **Overworld** (`game.html`) — each grid square is its own SVGA scene; move with on-screen arrows
 
 Selected party members are stored in `sessionStorage` under `dragonQuestParty`.
+The **first** hero chosen becomes the party leader sprite on the overworld.
 
 ## Overworld map
 
-- Terrain: Mountains (impassable), Plains, Forest, Meadow, Swamp
-- Special red scenes: Dragon Castle, Temple of Peace, Outlaw Hideout, Mines of Tyrol, TOWN, Initial Sequence (start), Abandoned Ruins, Witches' Lair
-- Enemies / encounters are not implemented yet
+- 24×8 scenes ringed by impassable mountains
+- Terrain scenes: Plains, Forest, Meadow, Swamp
+- Special scenes (red-framed landmarks): Dragon Castle, Temple of Peace, Outlaw Hideout, Mines of Tyrol, TOWN, Initial Sequence (start), Abandoned Ruins, Witches' Lair
+- Mini-map for orientation; enemies / encounters not implemented yet

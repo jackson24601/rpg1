@@ -9,9 +9,8 @@
   --btn-face: #c9a227;
   --btn-face-hover: #e0b93a;
   --btn-shadow: #5a3d0a;
-  --tile: 56px;
   --special-red: #c62828;
-  --special-red-dark: #7f1515;
+  --mini: 14px;
 }
 
 *,
@@ -47,7 +46,7 @@ body.game-page {
 .game-shell {
   position: relative;
   z-index: 1;
-  width: min(720px, calc(100% - 1rem));
+  width: min(860px, calc(100% - 1rem));
   margin: 0.65rem auto 1.25rem;
   display: grid;
   gap: 0.65rem;
@@ -104,7 +103,7 @@ body.game-page {
 .hud__location {
   margin: 0.35rem 0 0.5rem;
   text-align: center;
-  font-size: 1.45rem;
+  font-size: 1.5rem;
   letter-spacing: 0.04em;
   color: var(--cream);
 }
@@ -128,6 +127,11 @@ body.game-page {
   border: 2px solid var(--panel-edge-dark);
 }
 
+.party-chip.is-leader {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 1px rgba(240, 201, 77, 0.35);
+}
+
 .party-chip img {
   width: 28px;
   height: 28px;
@@ -140,190 +144,120 @@ body.game-page {
   color: var(--gold);
 }
 
-.board-wrap {
-  padding: 0.5rem;
+.party-chip__tag {
+  font-size: 0.95rem;
+  color: var(--muted);
 }
 
-.board-scroll {
-  overflow: auto;
-  max-height: min(62vh, 720px);
+.stage {
+  padding: 0.55rem;
+}
+
+.scene-frame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 320 / 224;
   border: 3px solid var(--ink);
   background: #0a1228;
-  image-rendering: pixelated;
-}
-
-.board {
-  --cols: 8;
-  display: grid;
-  grid-template-columns: repeat(var(--cols), var(--tile));
-  width: calc(var(--cols) * var(--tile));
-  margin: 0 auto;
-  gap: 0;
-}
-
-.tile {
-  position: relative;
-  width: var(--tile);
-  height: var(--tile);
-  border: 1px solid rgba(0, 0, 0, 0.35);
   overflow: hidden;
   image-rendering: pixelated;
+  box-shadow: inset 0 0 0 2px rgba(243, 230, 176, 0.25);
 }
 
-.tile__label {
-  position: absolute;
-  left: 2px;
-  right: 2px;
-  bottom: 2px;
-  margin: 0;
-  font-size: 0.62rem;
-  line-height: 1.05;
-  text-align: center;
-  color: #fff8d8;
-  text-shadow: 0 1px 0 #000, 1px 0 0 #000, -1px 0 0 #000, 0 -1px 0 #000;
-  pointer-events: none;
-  letter-spacing: 0.01em;
+.scene-frame.is-moving .scene-svg {
+  animation: scene-fade 280ms ease;
 }
 
-.tile.is-current {
-  outline: 3px solid var(--gold);
-  outline-offset: -3px;
-  z-index: 2;
+.scene-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  image-rendering: pixelated;
 }
 
-.tile.is-current::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  top: 42%;
-  width: 18px;
-  height: 18px;
-  transform: translate(-50%, -50%);
-  background:
-    linear-gradient(180deg, #f0c94d 0 4px, transparent 4px),
-    linear-gradient(180deg, transparent 8px, #3a6fd8 8px 16px, #f0c94d 16px 18px),
-    radial-gradient(circle at 50% 30%, #e0b089 0 5px, transparent 5.5px);
-  background-repeat: no-repeat;
-  background-position: center top, center, center 2px;
-  filter: drop-shadow(0 1px 0 #000);
-  z-index: 3;
+.scene-svg .party-sprite {
   animation: party-bob 1.1s ease-in-out infinite;
+  transform-box: fill-box;
 }
 
-/* Terrain fills — chunky SVGA / 16-bit overworld look */
-.tile--mountain {
-  background: linear-gradient(180deg, #6b8cae 0%, #4a5d72 38%, #6a4a32 38%, #4a3220 100%);
+@keyframes party-bob {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: 0 -2px;
+  }
 }
 
-.tile--mountain::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background:
-    linear-gradient(135deg, transparent 36%, #eef4fb 37% 46%, transparent 47%),
-    linear-gradient(225deg, transparent 42%, #2e2418 43% 58%, transparent 59%),
-    linear-gradient(180deg, transparent 55%, rgba(0, 0, 0, 0.22) 100%);
+.scene-caption {
+  margin: 0.45rem 0 0;
+  text-align: center;
+  font-size: 1.2rem;
+  color: var(--muted);
+  letter-spacing: 0.04em;
 }
 
-.tile--plains {
-  background:
-    repeating-linear-gradient(
-      0deg,
-      #4f9a3c 0 4px,
-      #458734 4px 8px
-    );
+.lower {
+  display: grid;
+  grid-template-columns: minmax(140px, 200px) 1fr;
+  gap: 0.65rem;
+  align-items: stretch;
 }
 
-.tile--plains::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background-image:
-    radial-gradient(circle at 20% 30%, #6fbf4a 0 1.5px, transparent 2px),
-    radial-gradient(circle at 70% 55%, #6fbf4a 0 1.5px, transparent 2px),
-    radial-gradient(circle at 45% 75%, #d4c35a 0 1.2px, transparent 1.6px);
-  opacity: 0.85;
+.section-label {
+  margin: 0 0 0.45rem;
+  color: var(--gold);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 1.05rem;
 }
 
-.tile--forest {
-  background: linear-gradient(180deg, #245528 0%, #1a3d1d 100%);
+.minimap {
+  --cols: 8;
+  display: grid;
+  grid-template-columns: repeat(var(--cols), var(--mini));
+  width: calc(var(--cols) * var(--mini));
+  margin: 0 auto;
+  gap: 0;
+  border: 2px solid var(--ink);
+  image-rendering: pixelated;
 }
 
-.tile--forest::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background-image:
-    radial-gradient(circle at 30% 40%, #2f7a38 0 10px, transparent 11px),
-    radial-gradient(circle at 68% 48%, #2a6c32 0 9px, transparent 10px),
-    radial-gradient(circle at 48% 68%, #34863d 0 8px, transparent 9px),
-    linear-gradient(180deg, transparent 62%, #5a3a1c 62% 70%, transparent 70%);
-  background-size: 100% 100%;
+.mini-tile {
+  width: var(--mini);
+  height: var(--mini);
+  border: 1px solid rgba(0, 0, 0, 0.25);
 }
 
-.tile--meadow {
-  background:
-    repeating-linear-gradient(
-      90deg,
-      #7cb84a 0 6px,
-      #6aa63d 6px 12px
-    );
+.mini-tile--mountain {
+  background: #7d8a9c;
 }
 
-.tile--meadow::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background-image:
-    radial-gradient(circle at 25% 35%, #f2d65c 0 2px, transparent 2.4px),
-    radial-gradient(circle at 60% 28%, #ef6a9c 0 2px, transparent 2.4px),
-    radial-gradient(circle at 72% 62%, #f2d65c 0 2px, transparent 2.4px),
-    radial-gradient(circle at 38% 70%, #7ec8ff 0 2px, transparent 2.4px);
+.mini-tile--plains {
+  background: #5fad45;
 }
 
-.tile--swamp {
-  background:
-    repeating-linear-gradient(
-      45deg,
-      #3d5a2e 0 6px,
-      #2f4a28 6px 12px
-    );
+.mini-tile--forest {
+  background: #2f6b32;
 }
 
-.tile--swamp::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(ellipse at 40% 40%, rgba(70, 120, 90, 0.55) 0 18%, transparent 30%),
-    radial-gradient(ellipse at 70% 65%, rgba(40, 70, 50, 0.65) 0 16%, transparent 28%),
-    linear-gradient(180deg, transparent 55%, rgba(30, 50, 40, 0.5) 100%);
+.mini-tile--meadow {
+  background: #7ec85a;
 }
 
-.tile--special {
-  background:
-    repeating-linear-gradient(
-      0deg,
-      var(--special-red) 0 6px,
-      var(--special-red-dark) 6px 12px
-    );
+.mini-tile--swamp {
+  background: #3d5a2e;
 }
 
-.tile--special::before {
-  content: "";
-  position: absolute;
-  inset: 4px;
-  border: 2px solid rgba(255, 220, 160, 0.55);
-  box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.25);
+.mini-tile--special {
+  background: var(--special-red);
 }
 
-.tile--special .tile__label {
-  font-size: 0.68rem;
-  font-weight: normal;
-  color: #fff4c8;
-  top: 50%;
-  bottom: auto;
-  transform: translateY(-50%);
+.mini-tile.is-current {
+  outline: 2px solid var(--gold);
+  outline-offset: -2px;
+  z-index: 1;
 }
 
 .controls {
@@ -406,19 +340,20 @@ body.game-page {
   grid-row: 3;
 }
 
-@keyframes party-bob {
-  0%,
-  100% {
-    transform: translate(-50%, -50%);
+@keyframes scene-fade {
+  from {
+    opacity: 0.35;
+    filter: brightness(1.15);
   }
-  50% {
-    transform: translate(-50%, calc(-50% - 3px));
+  to {
+    opacity: 1;
+    filter: brightness(1);
   }
 }
 
-@media (max-width: 640px) {
-  :root {
-    --tile: 44px;
+@media (max-width: 720px) {
+  .lower {
+    grid-template-columns: 1fr;
   }
 
   .controls {
@@ -437,10 +372,14 @@ body.game-page {
   .back-link {
     justify-self: start;
   }
+
+  :root {
+    --mini: 12px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .tile.is-current::after {
+  .scene-frame.is-moving .scene-svg {
     animation: none;
   }
 }
