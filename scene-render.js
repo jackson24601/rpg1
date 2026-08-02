@@ -144,6 +144,10 @@ export function renderSceneSvg(
           <ellipse cx="3" cy="4" rx="3" ry="2" fill="#2f4a28" opacity="0.7"/>
           <ellipse cx="9" cy="9" rx="3" ry="2" fill="#4a6a38" opacity="0.5"/>
         </pattern>
+        <radialGradient id="forestVignette" cx="50%" cy="55%" r="65%">
+          <stop offset="45%" stop-color="#0a2214" stop-opacity="0"/>
+          <stop offset="100%" stop-color="#061810" stop-opacity="0.75"/>
+        </radialGradient>
       </defs>
       ${layers.join("\n")}
     </svg>
@@ -237,6 +241,24 @@ function tree(cx, cy, scale = 1) {
   `;
 }
 
+/** Taller, darker canopy tree for deep woodland scenes. */
+function deepTree(cx, cy, scale = 1) {
+  const r = 20 * scale;
+  const trunkH = 18 * scale;
+  return `
+    <g class="deep-tree">
+      <rect x="${cx - 3 * scale}" y="${cy + 2 * scale}" width="${6 * scale}" height="${trunkH}" fill="#4a2e18"/>
+      <rect x="${cx - 2 * scale}" y="${cy + 4 * scale}" width="${2 * scale}" height="${trunkH * 0.7}" fill="#6b4226" opacity="0.55"/>
+      <ellipse cx="${cx - 8 * scale}" cy="${cy}" rx="${r * 0.7}" ry="${r * 0.55}" fill="#145526"/>
+      <ellipse cx="${cx + 8 * scale}" cy="${cy}" rx="${r * 0.7}" ry="${r * 0.55}" fill="#0f4a20"/>
+      <ellipse cx="${cx}" cy="${cy - 4 * scale}" rx="${r}" ry="${r * 0.78}" fill="#1a6b30"/>
+      <ellipse cx="${cx}" cy="${cy - 14 * scale}" rx="${r * 0.7}" ry="${r * 0.55}" fill="#228038"/>
+      <ellipse cx="${cx}" cy="${cy - 22 * scale}" rx="${r * 0.42}" ry="${r * 0.36}" fill="#2d9444"/>
+      <ellipse cx="${cx - 5 * scale}" cy="${cy - 10 * scale}" rx="${r * 0.22}" ry="${r * 0.14}" fill="#4db85a" opacity="0.45"/>
+    </g>
+  `;
+}
+
 function forestCluster(seed, mode) {
   const trees = [];
   const count = mode === "dense" ? 9 : mode === "deep" ? 14 : 4;
@@ -262,22 +284,69 @@ function forestCluster(seed, mode) {
 
 /** Dense woodland clearing used for the starting Initial Sequence scene. */
 function deepForestScene(seed) {
+  const back = [];
+  const sides = [];
+  const fore = [];
+
+  // Solid back wall of tall canopy trees
+  for (let i = 0; i < 9; i += 1) {
+    back.push(deepTree(6 + i * 38 + (seed % 4), 92 + ((i + seed) % 3) * 3, 1.15 + (i % 2) * 0.08));
+  }
+  // Second back row, slightly forward — fills gaps
+  for (let i = 0; i < 8; i += 1) {
+    back.push(deepTree(24 + i * 40 + ((seed * 2) % 5), 108 + ((i * 3) % 5), 1.05));
+  }
+
+  // Left thicket (keep x < ~110 so center clearing stays open)
+  for (let i = 0; i < 6; i += 1) {
+    sides.push(deepTree(12 + ((seed + i * 23) % 78), 118 + i * 12, 1.1 + (i % 2) * 0.12));
+  }
+  // Right thicket (keep x > ~220)
+  for (let i = 0; i < 6; i += 1) {
+    sides.push(deepTree(235 + ((seed + i * 19) % 70), 116 + i * 12, 1.1 + (i % 2) * 0.12));
+  }
+
+  // Mid-side framing trees
+  sides.push(deepTree(88, 148, 1.15));
+  sides.push(deepTree(232, 146, 1.2));
+  sides.push(tree(70, 160, 0.95));
+  sides.push(tree(250, 158, 0.95));
+
+  // Foreground giants hugging the edges
+  fore.push(deepTree(10, 168, 1.4));
+  fore.push(deepTree(310, 168, 1.4));
+  fore.push(deepTree(38, 178, 1.25));
+  fore.push(deepTree(282, 176, 1.25));
+  fore.push(tree(58, 188, 1.05));
+  fore.push(tree(262, 186, 1.05));
+
   return `
     <g class="deep-forest">
-      <!-- Canopy shade over the clearing -->
-      <rect y="70" width="${W}" height="${H - 70}" fill="#0f2a18" opacity="0.18"/>
-      ${forestCluster(seed + 11, "deep")}
-      <!-- Soft path through the trees -->
-      <path d="M145 224 C155 190, 150 160, 160 130 C170 110, 175 95, 168 80"
-        fill="none" stroke="#5a7a3a" stroke-width="18" opacity="0.35"/>
-      <path d="M145 224 C155 190, 150 160, 160 130 C170 110, 175 95, 168 80"
-        fill="none" stroke="#6b8f45" stroke-width="8" opacity="0.4"/>
-      <!-- Leaf litter / mushrooms -->
-      <ellipse cx="60" cy="180" rx="10" ry="4" fill="#3d5a28" opacity="0.7"/>
-      <ellipse cx="250" cy="170" rx="12" ry="5" fill="#3d5a28" opacity="0.65"/>
-      <circle cx="72" cy="176" r="3" fill="#c4543a"/>
-      <circle cx="78" cy="178" r="2.5" fill="#e8d48a"/>
-      <circle cx="242" cy="166" r="3" fill="#c4543a"/>
+      <!-- Deep shade wash -->
+      <rect y="70" width="${W}" height="${H - 70}" fill="#0a2214" opacity="0.28"/>
+      <!-- Mossy clearing + trail (under trees) -->
+      <ellipse cx="160" cy="158" rx="54" ry="34" fill="#4a6a32" opacity="0.55"/>
+      <ellipse cx="160" cy="168" rx="40" ry="22" fill="#6a8f48" opacity="0.35"/>
+      <path d="M152 224 C158 195, 158 170, 162 140 C166 118, 168 98, 164 80"
+        fill="none" stroke="#5a7a3a" stroke-width="22" opacity="0.4"/>
+      <path d="M152 224 C158 195, 158 170, 162 140 C166 118, 168 98, 164 80"
+        fill="none" stroke="#7a9a52" stroke-width="10" opacity="0.45"/>
+      ${back.join("")}
+      ${sides.join("")}
+      <!-- Leaf litter / undergrowth at clearing edges -->
+      <ellipse cx="100" cy="155" rx="11" ry="4" fill="#2a4a20" opacity="0.75"/>
+      <ellipse cx="220" cy="150" rx="13" ry="5" fill="#2a4a20" opacity="0.7"/>
+      <ellipse cx="95" cy="175" rx="9" ry="3.5" fill="#3d5a28" opacity="0.7"/>
+      <ellipse cx="225" cy="172" rx="10" ry="4" fill="#3d5a28" opacity="0.65"/>
+      <!-- Mushrooms -->
+      <circle cx="104" cy="152" r="3" fill="#c4543a"/>
+      <circle cx="110" cy="154" r="2.5" fill="#e8d48a"/>
+      <circle cx="228" cy="148" r="3" fill="#c4543a"/>
+      <circle cx="98" cy="172" r="2.5" fill="#c4543a"/>
+      <circle cx="232" cy="170" r="2.5" fill="#e8d48a"/>
+      ${fore.join("")}
+      <!-- Soft vignette for deep-woods atmosphere -->
+      <rect y="70" width="${W}" height="${H - 70}" fill="url(#forestVignette)" opacity="0.55"/>
     </g>
   `;
 }
