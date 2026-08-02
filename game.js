@@ -5,7 +5,14 @@ import {
   buildMap,
   cellAt,
 } from "./map-data.js";
-import { renderSceneSvg, facingFromDelta } from "./scene-render.js";
+import {
+  renderSceneSvg,
+  facingFromDelta,
+  REST_POS,
+  exitPosForDelta,
+  entryPosForDelta,
+  spriteTransform,
+} from "./scene-render.js";
 
 const cells = buildMap();
 const sceneFrame = document.getElementById("sceneFrame");
@@ -18,7 +25,14 @@ const partyStrip = document.getElementById("partyStrip");
 
 const position = { ...START };
 let facing = "down";
+let spritePos = { ...REST_POS };
+let isAnimating = false;
 const miniEls = new Map();
+
+const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const WALK_MS = reduceMotion ? 0 : 560;
+const ENTER_MS = reduceMotion ? 0 : 560;
+const ENTRY_HOLD_MS = reduceMotion ? 0 : 350;
 
 function loadParty() {
   try {
@@ -78,17 +92,14 @@ function setStatus(message) {
   statusLine.textContent = message;
 }
 
-function renderScene() {
-  const cell = cellAt(cells, position.x, position.y);
-  const leader = getLeader();
-  const leaderId = leader?.id || "fighter";
+function setControlsEnabled(enabled) {
+  document.querySelectorAll(".dpad__btn[data-dx]").forEach((btn) => {
+    btn.disabled = !enabled;
+  });
+  sceneFrame.classList.toggle("is-walking", !enabled);
+}
 
-  sceneFrame.classList.remove("is-moving");
-  // force reflow so animation can replay
-  void sceneFrame.offsetWidth;
-  sceneFrame.classList.add("is-moving");
-  sceneFrame.innerHTML = renderSceneSvg(cells, cell, leaderId, facing);
-
+function updateHudLabels(cell) {
   locationLabel.textContent = cell.name;
   coordsLabel.textContent = `${position.x + 1}, ${position.y + 1}`;
   sceneCaption.textContent = cell.special
@@ -99,7 +110,66 @@ function renderScene() {
   miniEls.get(`${position.x},${position.y}`)?.classList.add("is-current");
 }
 
-function tryMove(dx, dy) {
+function renderScene({ animateFrame = false } = {}) {
+  const cell = cellAt(cells, position.x, position.y);
+  const leader = getLeader();
+  const leaderId = leader?.id || "fighter";
+
+  if (animateFrame) {
+    sceneFrame.classList.remove("is-moving");
+    void sceneFrame.offsetWidth;
+    sceneFrame.classList.add("is-moving");
+  }
+
+  sceneFrame.innerHTML = renderSceneSvg(
+    cells,
+    cell,
+    leaderId,
+    facing,
+    spritePos
+  );
+  updateHudLabels(cell);
+}
+
+function placeSpriteDom(x, y) {
+  const node = sceneFrame.querySelector('[data-sprite="leader"]');
+  if (!node) return;
+  node.setAttribute("transform", spriteTransform(facing, x, y));
+}
+
+function easeInOut(t) {
+  return t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
+}
+
+function animateSpriteTo(target, durationMs) {
+  return new Promise((resolve) => {
+    const start = { ...spritePos };
+    const t0 = performance.now();
+
+    function frame(now) {
+      const t = Math.min(1, (now - t0) / durationMs);
+      const e = easeInOut(t);
+      spritePos = {
+        x: start.x + (target.x - start.x) * e,
+        y: start.y + (target.y - start.y) * e,
+      };
+      placeSpriteDom(spritePos.x, spritePos.y);
+      if (t < 1) {
+        requestAnimationFrame(frame);
+      } else {
+        spritePos = { ...target };
+        placeSpriteDom(spritePos.x, spritePos.y);
+        resolve();
+      }
+    }
+
+    requestAnimationFrame(frame);
+  });
+}
+
+async function tryMove(dx, dy) {
+  if (isAnimating) return;
+
   const nextX = position.x + dx;
   const nextY = position.y + dy;
   const target = cellAt(cells, nextX, nextY);
@@ -109,26 +179,62 @@ function tryMove(dx, dy) {
     return;
   }
 
+  facing = facingFromDelta(dx, dy);
+
   if (!target.walkable) {
     setStatus("Impassable mountains block your path.");
-    facing = facingFromDelta(dx, dy);
+    // Face the mountain and take a short step, then return
+    isAnimating = true;
+    setControlsEnabled(false);
+    const bump = {
+      x: spritePos.x + dx * 10,
+      y: spritePos.y + dy * 8,
+    };
+    await animateSpriteTo(bump, 140);
+    await animateSpriteTo(REST_POS, 160);
+    spritePos = { ...REST_POS };
     renderScene();
+    isAnimating = false;
+    setControlsEnabled(true);
     return;
   }
 
-  facing = facingFromDelta(dx, dy);
-  position.x = nextX;
-  position.y = nextY;
-  renderScene();
+  isAnimating = true;
+  setControlsEnabled(false);
 
   const leader = getLeader();
   const who = leader ? leader.name : "Your party";
+  setStatus(`${who} is traveling…`);
+
+  // 1) Walk off the current scene toward the chosen edge
+  const exitPos = exitPosForDelta(dx, dy, spritePos);
+  await animateSpriteTo(exitPos, WALK_MS);
+
+  // 2) Enter the next scene on that same side (went left → begin on left)
+  position.x = nextX;
+  position.y = nextY;
+  spritePos = entryPosForDelta(dx, dy);
+  renderScene({ animateFrame: true });
+  placeSpriteDom(spritePos.x, spritePos.y);
+
+  // Let the entry pose paint before walking inward
+  await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  if (ENTRY_HOLD_MS) {
+    await new Promise((resolve) => setTimeout(resolve, ENTRY_HOLD_MS));
+  }
+
+  // 3) Walk from the entry edge into the scene
+  await animateSpriteTo(REST_POS, ENTER_MS);
+  spritePos = { ...REST_POS };
 
   if (target.special) {
     setStatus(`${who} entered ${target.name}. (Encounters coming soon.)`);
   } else {
-    setStatus(`${who} travels into the ${target.name.toLowerCase()} scene.`);
+    setStatus(`${who} arrives in the ${target.name.toLowerCase()}.`);
   }
+
+  isAnimating = false;
+  setControlsEnabled(true);
 }
 
 function bindControls() {
@@ -160,7 +266,7 @@ bindControls();
 const leader = getLeader();
 setStatus(
   leader
-    ? `${leader.name} leads the party at the Initial Sequence. Each square is its own scene — mountains cannot be crossed.`
+    ? `${leader.name} leads the party at the Initial Sequence. Walk between scenes with the arrows.`
     : "Your quest begins at the Initial Sequence. Pick a party first so a hero can lead on the overworld."
 );
 

@@ -1,7 +1,15 @@
 import { cellAt, TERRAIN } from "./map-data.js";
 
-const W = 320;
-const H = 224;
+export const SCENE_W = 320;
+export const SCENE_H = 224;
+export const SPRITE_W = 40;
+export const SPRITE_H = 44;
+
+const W = SCENE_W;
+const H = SCENE_H;
+
+/** Default resting spot in the mid-foreground. */
+export const REST_POS = { x: 140, y: 138 };
 
 function neighborTerrain(cells, x, y, dx, dy) {
   const cell = cellAt(cells, x + dx, y + dy);
@@ -17,7 +25,13 @@ function pick(seed, options) {
 }
 
 /** Build an SVGA-style scene SVG for one map cell. */
-export function renderSceneSvg(cells, cell, partyLeaderId, facing = "down") {
+export function renderSceneSvg(
+  cells,
+  cell,
+  partyLeaderId,
+  facing = "down",
+  spritePos = REST_POS
+) {
   const { x, y, terrain, name, special } = cell;
   const n = neighborTerrain(cells, x, y, 0, -1);
   const e = neighborTerrain(cells, x, y, 1, 0);
@@ -63,7 +77,7 @@ export function renderSceneSvg(cells, cell, partyLeaderId, facing = "down") {
 
   // Party leader stands in the traversable mid-foreground
   if (partyLeaderId && terrain !== TERRAIN.mountain) {
-    layers.push(partySprite(partyLeaderId, facing));
+    layers.push(partySprite(partyLeaderId, facing, spritePos.x, spritePos.y));
   }
 
   if (special) {
@@ -359,16 +373,16 @@ function specialLandmark(name, seed) {
   }
 }
 
-function partySprite(leaderId, facing) {
-  const x = 140;
-  const y = 138;
+function partySprite(leaderId, facing, x = REST_POS.x, y = REST_POS.y) {
   const flip = facing === "left" ? -1 : 1;
   const transform =
-    flip === -1 ? `translate(${x + 40} ${y}) scale(-1 1)` : `translate(${x} ${y})`;
+    flip === -1
+      ? `translate(${x + SPRITE_W} ${y}) scale(-1 1)`
+      : `translate(${x} ${y})`;
   return `
-    <g class="party-sprite" transform="${transform}">
+    <g class="party-sprite" data-sprite="leader" transform="${transform}">
       <ellipse cx="20" cy="42" rx="12" ry="4" fill="#1a2a14" opacity="0.45"/>
-      <image href="assets/overworld/${leaderId}.png" x="0" y="0" width="40" height="44"
+      <image href="assets/overworld/${leaderId}.png" x="0" y="0" width="${SPRITE_W}" height="${SPRITE_H}"
         style="image-rendering: pixelated" preserveAspectRatio="xMidYMax meet" />
     </g>
   `;
@@ -379,4 +393,30 @@ export function facingFromDelta(dx, dy) {
   if (dx > 0) return "right";
   if (dy < 0) return "up";
   return "down";
+}
+
+/** Exit point just off-screen in the travel direction. */
+export function exitPosForDelta(dx, dy, from = REST_POS) {
+  if (dx < 0) return { x: -SPRITE_W - 4, y: from.y };
+  if (dx > 0) return { x: SCENE_W + 4, y: from.y };
+  if (dy < 0) return { x: from.x, y: 40 };
+  return { x: from.x, y: SCENE_H + 4 };
+}
+
+/**
+ * Entry point on the side matching travel direction.
+ * e.g. moved left → begin on the left of the new scene.
+ */
+export function entryPosForDelta(dx, dy) {
+  if (dx < 0) return { x: 4, y: REST_POS.y };
+  if (dx > 0) return { x: SCENE_W - SPRITE_W - 4, y: REST_POS.y };
+  if (dy < 0) return { x: REST_POS.x, y: 64 };
+  return { x: REST_POS.x, y: SCENE_H - SPRITE_H - 6 };
+}
+
+export function spriteTransform(facing, x, y) {
+  if (facing === "left") {
+    return `translate(${x + SPRITE_W} ${y}) scale(-1 1)`;
+  }
+  return `translate(${x} ${y})`;
 }
