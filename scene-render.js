@@ -11,6 +11,14 @@ const H = SCENE_H;
 /** Default resting spot in the mid-foreground. */
 export const REST_POS = { x: 140, y: 138 };
 
+/** Walkable bounds inside a scene (sprite top-left). */
+export const WALK_BOUNDS = {
+  minX: 4,
+  maxX: SCENE_W - SPRITE_W - 4,
+  minY: 72,
+  maxY: SCENE_H - SPRITE_H - 6,
+};
+
 function neighborTerrain(cells, x, y, dx, dy) {
   const cell = cellAt(cells, x + dx, y + dy);
   return cell?.terrain ?? null;

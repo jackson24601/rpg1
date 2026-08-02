@@ -307,9 +307,20 @@ body.game-page {
   font-size: 1.35rem;
   font-family: inherit;
   cursor: pointer;
+  touch-action: none;
+  user-select: none;
   box-shadow:
     inset 0 2px 0 rgba(255, 241, 168, 0.45),
     0 4px 0 var(--btn-shadow);
+}
+
+.dpad__btn:not(:disabled):active,
+.dpad__btn.is-held {
+  transform: translateY(2px);
+  filter: brightness(1.08);
+  box-shadow:
+    inset 0 2px 0 rgba(90, 61, 10, 0.3),
+    0 1px 0 var(--btn-shadow);
 }
 
 .dpad__btn:hover:not(:disabled),
