@@ -358,15 +358,15 @@ function specialLandmark(name, seed) {
 }
 
 function partySprite(leaderId, facing) {
-  const x = 144;
-  const y = 142;
+  const x = 140;
+  const y = 138;
   const flip = facing === "left" ? -1 : 1;
   const transform =
-    flip === -1 ? `translate(${x + 32} ${y}) scale(-1 1)` : `translate(${x} ${y})`;
+    flip === -1 ? `translate(${x + 40} ${y}) scale(-1 1)` : `translate(${x} ${y})`;
   return `
     <g class="party-sprite" transform="${transform}">
-      <ellipse cx="16" cy="34" rx="11" ry="4" fill="#1a2a14" opacity="0.45"/>
-      <image href="assets/overworld/${leaderId}.png" x="0" y="0" width="32" height="36"
+      <ellipse cx="20" cy="42" rx="12" ry="4" fill="#1a2a14" opacity="0.45"/>
+      <image href="assets/overworld/${leaderId}.png" x="0" y="0" width="40" height="44"
         style="image-rendering: pixelated" preserveAspectRatio="xMidYMax meet" />
     </g>
   `;
