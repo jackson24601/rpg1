@@ -32,7 +32,7 @@ const miniEls = new Map();
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const WALK_MS = reduceMotion ? 0 : 560;
 const ENTER_MS = reduceMotion ? 0 : 560;
-const ENTRY_HOLD_MS = reduceMotion ? 0 : 120;
+const ENTRY_HOLD_MS = reduceMotion ? 0 : 350;
 
 function loadParty() {
   try {
