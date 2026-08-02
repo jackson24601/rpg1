@@ -30,8 +30,9 @@ let isAnimating = false;
 const miniEls = new Map();
 
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-const WALK_MS = reduceMotion ? 0 : 520;
-const ENTER_MS = reduceMotion ? 0 : 480;
+const WALK_MS = reduceMotion ? 0 : 560;
+const ENTER_MS = reduceMotion ? 0 : 560;
+const ENTRY_HOLD_MS = reduceMotion ? 0 : 120;
 
 function loadParty() {
   try {
@@ -214,6 +215,13 @@ async function tryMove(dx, dy) {
   position.y = nextY;
   spritePos = entryPosForDelta(dx, dy);
   renderScene({ animateFrame: true });
+  placeSpriteDom(spritePos.x, spritePos.y);
+
+  // Let the entry pose paint before walking inward
+  await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  if (ENTRY_HOLD_MS) {
+    await new Promise((resolve) => setTimeout(resolve, ENTRY_HOLD_MS));
+  }
 
   // 3) Walk from the entry edge into the scene
   await animateSpriteTo(REST_POS, ENTER_MS);

@@ -408,10 +408,10 @@ export function exitPosForDelta(dx, dy, from = REST_POS) {
  * e.g. moved left → begin on the left of the new scene.
  */
 export function entryPosForDelta(dx, dy) {
-  if (dx < 0) return { x: 10, y: REST_POS.y };
-  if (dx > 0) return { x: SCENE_W - SPRITE_W - 10, y: REST_POS.y };
-  if (dy < 0) return { x: REST_POS.x, y: 72 };
-  return { x: REST_POS.x, y: SCENE_H - SPRITE_H - 12 };
+  if (dx < 0) return { x: 4, y: REST_POS.y };
+  if (dx > 0) return { x: SCENE_W - SPRITE_W - 4, y: REST_POS.y };
+  if (dy < 0) return { x: REST_POS.x, y: 64 };
+  return { x: REST_POS.x, y: SCENE_H - SPRITE_H - 6 };
 }
 
 export function spriteTransform(facing, x, y) {
