@@ -87,10 +87,11 @@ export function renderSceneSvg(cells, cell, partyLeaderId, facing = "down") {
           <stop offset="100%" stop-color="#c46b4a"/>
         </linearGradient>
         <pattern id="grass" width="8" height="8" patternUnits="userSpaceOnUse">
-          <rect width="8" height="8" fill="#5fad45"/>
-          <rect x="0" y="0" width="2" height="2" fill="#6fbf52"/>
-          <rect x="4" y="4" width="2" height="2" fill="#4f9638"/>
-          <rect x="6" y="1" width="1" height="1" fill="#7cc85c"/>
+          <rect width="8" height="8" fill="#6dbd4e"/>
+          <rect x="0" y="0" width="2" height="2" fill="#7dce5c"/>
+          <rect x="4" y="3" width="2" height="2" fill="#5aa83f"/>
+          <rect x="6" y="6" width="1" height="1" fill="#8ad868"/>
+          <rect x="2" y="5" width="1" height="1" fill="#4f9638"/>
         </pattern>
         <pattern id="meadow" width="10" height="10" patternUnits="userSpaceOnUse">
           <rect width="10" height="10" fill="#6db84a"/>
@@ -183,14 +184,15 @@ function mountainEdge(side, seed) {
 }
 
 function tree(cx, cy, scale = 1) {
-  const r = 16 * scale;
+  const r = 18 * scale;
   return `
     <g class="tree">
-      <rect x="${cx - 2}" y="${cy}" width="4" height="${10 * scale}" fill="#6b4226"/>
-      <ellipse cx="${cx}" cy="${cy - 4 * scale}" rx="${r}" ry="${r * 0.85}" fill="#2f8a3a"/>
-      <ellipse cx="${cx - 6 * scale}" cy="${cy}" rx="${r * 0.7}" ry="${r * 0.6}" fill="#287a32"/>
-      <ellipse cx="${cx + 6 * scale}" cy="${cy}" rx="${r * 0.7}" ry="${r * 0.6}" fill="#34963f"/>
-      <ellipse cx="${cx}" cy="${cy - 10 * scale}" rx="${r * 0.55}" ry="${r * 0.45}" fill="#3aa846"/>
+      <rect x="${cx - 2}" y="${cy + 2 * scale}" width="4" height="${12 * scale}" fill="#6b4226"/>
+      <ellipse cx="${cx - 7 * scale}" cy="${cy + 2 * scale}" rx="${r * 0.72}" ry="${r * 0.58}" fill="#228b33"/>
+      <ellipse cx="${cx + 7 * scale}" cy="${cy + 2 * scale}" rx="${r * 0.72}" ry="${r * 0.58}" fill="#1f7d2e"/>
+      <ellipse cx="${cx}" cy="${cy - 2 * scale}" rx="${r}" ry="${r * 0.8}" fill="#2f9a3c"/>
+      <ellipse cx="${cx}" cy="${cy - 10 * scale}" rx="${r * 0.62}" ry="${r * 0.5}" fill="#3cb04a"/>
+      <ellipse cx="${cx - 4 * scale}" cy="${cy - 6 * scale}" rx="${r * 0.25}" ry="${r * 0.18}" fill="#6fce6a" opacity="0.7"/>
     </g>
   `;
 }
