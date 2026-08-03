@@ -112,6 +112,7 @@ export const CLASSES = [
     attack: 7,
     defend: 7,
     stamina: 9,
+    intelligence: 6,
     attackTypes: ["Fire Arrows"],
     defendType: "Dodge",
     spells: [],
