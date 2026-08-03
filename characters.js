@@ -9,6 +9,9 @@
  *   Characters lose STAMINA_LOSS_PER_ROUND each combat round;
  *   spells may restore stamina.
  * - Intelligence: required to cast spells (MIN_INTELLIGENCE_TO_CAST+).
+ * - Successful weapon/melee attacks deal BASE_ATTACK_DAMAGE hit points
+ *   (initially 1). Attack-move multipliers (e.g. Double Strike) apply on top.
+ *   Spell damage uses each spell's listed amount, not BASE_ATTACK_DAMAGE.
  * - attackTypes / defendType: labels for the action buttons on that
  *   character's turn (e.g. ["Slash", "Thrust"], "Parry").
  *   Special attack behavior is defined in ATTACK_MOVES when needed.
@@ -21,6 +24,8 @@ export const STAMINA_LOSS_PER_ROUND = 0.5;
 export const MIN_INTELLIGENCE_TO_CAST = 7;
 /** Attack and Defend rolls succeed if random(1..SCALE) <= rating. */
 export const SUCCESS_SCALE = 10;
+/** Hit-point damage dealt by a successful non-spell attack. */
+export const BASE_ATTACK_DAMAGE = 1;
 
 /**
  * @typedef {object} SpellDef
@@ -39,7 +44,7 @@ export const ATTACK_MOVES = {
   "Double Strike": {
     name: "Double Strike",
     description:
-      "If this attack is successful, it deals double damage to the opponent.",
+      "If this attack is successful, it deals double damage to the opponent (2 hit points).",
     effect: { type: "damageMultiplierOnHit", multiplier: 2 },
   },
 };
@@ -447,10 +452,34 @@ export function attackDamageMultiplier(attackTypeName) {
   return 1;
 }
 
-export function resolveAttackDamage(baseDamage, attackTypeName, didHit) {
+/**
+ * Damage for a successful non-spell attack.
+ * Defaults to BASE_ATTACK_DAMAGE (1); multipliers like Double Strike apply after.
+ * Spell damage must use each spell's own amount via applySpell / getSpellDamage.
+ */
+export function resolveAttackDamage(
+  attackTypeName,
+  didHit,
+  baseDamage = BASE_ATTACK_DAMAGE
+) {
   if (!didHit) return 0;
-  const base = Number(baseDamage) || 0;
-  return base * attackDamageMultiplier(attackTypeName);
+  const base = Number(baseDamage);
+  const amount = Number.isFinite(base) ? base : BASE_ATTACK_DAMAGE;
+  return amount * attackDamageMultiplier(attackTypeName);
+}
+
+/** Explicit spell damage amount, or 0 if the spell is not a damage effect. */
+export function getSpellDamage(spellId) {
+  const spell = getSpell(spellId);
+  if (!spell) return 0;
+  const { type, amount } = spell.effect || {};
+  if (
+    type === "damageTarget" ||
+    type === "damageAllOpponents"
+  ) {
+    return Number(amount) || 0;
+  }
+  return 0;
 }
 
 /**
