@@ -125,6 +125,43 @@ export const SPELLS = {
       "Any damage dealt next turn to any character is reduced by 25%.",
     effect: { type: "allDamageTakenReduceNextTurn", multiplier: 0.75 },
   },
+  "summon-goblin": {
+    id: "summon-goblin",
+    name: "Summon Goblin",
+    description:
+      "Summon a level 1 Goblin ally. You may command it starting on the next turn.",
+    effect: { type: "summonAlly", summonId: "goblin-level-1" },
+  },
+};
+
+/**
+ * Summonable combat allies (distinct from overworld enemies).
+ * @type {Record<string, {
+ *   id: string,
+ *   name: string,
+ *   level: number,
+ *   hitPoints: number,
+ *   attack: number,
+ *   attackTypes: string[],
+ *   defend?: number|null,
+ *   stamina?: number|null,
+ *   intelligence?: number|null,
+ *   defendType?: string|null
+ * }>}
+ */
+export const SUMMONS = {
+  "goblin-level-1": {
+    id: "goblin-level-1",
+    name: "Goblin",
+    level: 1,
+    hitPoints: 5,
+    attack: 5,
+    attackTypes: ["Club"],
+    defend: null,
+    stamina: null,
+    intelligence: null,
+    defendType: null,
+  },
 };
 
 /**
@@ -319,6 +356,14 @@ export const CLASSES = [
     blurb: "Pact-bound blaster with unique invocations.",
     detail:
       "Warlock — Makes a pact with a powerful entity, unique invocation system, spell blasting.",
+    hitPoints: 50,
+    attack: 2,
+    defend: 2,
+    stamina: 6,
+    intelligence: 10,
+    attackTypes: ["Strike"],
+    defendType: "Dodge",
+    spells: ["summon-goblin"],
   },
 ];
 
@@ -419,7 +464,8 @@ export function resolveAttackDamage(baseDamage, attackTypeName, didHit) {
  *   opponents?: object[],
  *   battle?: {
  *     enemyDamageMultiplierNextTurn?: number,
- *     allDamageTakenMultiplierNextTurn?: number
+ *     allDamageTakenMultiplierNextTurn?: number,
+ *     summons?: object[]
  *   }
  * }} [context]
  */
@@ -594,7 +640,67 @@ export function applySpell(caster, spellId, context = {}) {
     };
   }
 
+  if (spell.effect.type === "summonAlly") {
+    const battle = context.battle;
+    if (!battle) {
+      return { ok: false, reason: "needs-battle" };
+    }
+    const summon = createSummon(spell.effect.summonId, {
+      controllerId: caster.id,
+    });
+    if (!summon) {
+      return { ok: false, reason: "unknown-summon" };
+    }
+    if (!Array.isArray(battle.summons)) battle.summons = [];
+    battle.summons.push(summon);
+    return {
+      ok: true,
+      spellId: spell.id,
+      name: spell.name,
+      summon,
+    };
+  }
+
   return { ok: false, reason: "unsupported-effect" };
+}
+
+let nextSummonInstanceId = 1;
+
+export function getSummonTemplate(summonId) {
+  return SUMMONS[summonId] || null;
+}
+
+/**
+ * Fresh summoned ally combatant. Controllable starting next turn.
+ */
+export function createSummon(summonId, { controllerId } = {}) {
+  const template = getSummonTemplate(summonId);
+  if (!template) return null;
+  return {
+    instanceId: `summon-${nextSummonInstanceId++}`,
+    id: template.id,
+    name: template.name,
+    level: template.level,
+    kind: "summon",
+    controllerId: controllerId || null,
+    maxHitPoints: template.hitPoints,
+    hitPoints: template.hitPoints,
+    attack: template.attack,
+    defend: template.defend ?? null,
+    maxStamina: template.stamina ?? null,
+    stamina: template.stamina ?? null,
+    intelligence: template.intelligence ?? null,
+    attackTypes: [...template.attackTypes],
+    attackType: template.attackTypes[0] || null,
+    defendType: template.defendType ?? null,
+    spells: [],
+    skills: [],
+    canCast: false,
+    /** Becomes true at the start of the turn after it is summoned. */
+    canCommand: false,
+    commandsAvailableNextTurn: true,
+    alive: true,
+  };
 }
 
 /**
@@ -691,7 +797,16 @@ export function formatCombatStats(cls) {
   if (spellDefs.length) {
     const names = spellDefs.map((s) => s.name).join(", ");
     const notes = spellDefs
-      .map((s) => `  · ${s.name}: ${s.description}`)
+      .map((s) => {
+        let line = `  · ${s.name}: ${s.description}`;
+        if (s.effect?.type === "summonAlly") {
+          const template = getSummonTemplate(s.effect.summonId);
+          if (template) {
+            line += ` Level ${template.level} ${template.name}: HP ${template.hitPoints}, Attack ${template.attack}/${SUCCESS_SCALE}, Attack Type: ${template.attackTypes.join(", ")}.`;
+          }
+        }
+        return line;
+      })
       .join("\n");
     spellLine = `Spells: ${names}\n${notes}`;
   } else {
