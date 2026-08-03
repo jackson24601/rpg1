@@ -47,40 +47,49 @@ export function renderSceneSvg(
   const w = neighborTerrain(cells, x, y, -1, 0);
   const seed = hash(x, y);
 
+  const isInitialForest = name === "Initial Sequence";
   const layers = [];
-  layers.push(skyLayer(terrain, special));
-  layers.push(groundLayer(terrain, special, seed));
 
-  if (n === TERRAIN.mountain || (y === 0 && terrain !== TERRAIN.mountain)) {
-    layers.push(mountainBand("north", seed));
-  }
-  if (s === TERRAIN.mountain) {
-    layers.push(mountainBand("south", seed + 3));
-  }
-  if (w === TERRAIN.mountain || terrain === TERRAIN.mountain) {
-    layers.push(mountainEdge("west", seed + 5));
-  }
-  if (e === TERRAIN.mountain || terrain === TERRAIN.mountain) {
-    layers.push(mountainEdge("east", seed + 7));
-  }
-
-  if (terrain === TERRAIN.forest || n === TERRAIN.forest || e === TERRAIN.forest) {
-    layers.push(forestCluster(seed, terrain === TERRAIN.forest ? "dense" : "edge"));
-  }
-  if (terrain === TERRAIN.meadow) {
-    layers.push(meadowFlowers(seed));
-  }
-  if (terrain === TERRAIN.swamp || s === TERRAIN.swamp || e === TERRAIN.swamp) {
-    layers.push(waterCorner(seed, terrain === TERRAIN.swamp));
-  }
-  if (terrain === TERRAIN.plains || terrain === TERRAIN.meadow) {
-    layers.push(distantTrees(seed));
-  }
-
-  if (special) {
+  if (isInitialForest) {
+    layers.push(skyLayer(TERRAIN.forest, false));
+    layers.push(groundLayer(TERRAIN.forest));
+    layers.push(deepForestScene(seed));
     layers.push(specialLandmark(name, seed));
-  } else if (name === "Plains" && seed % 5 === 0) {
-    layers.push(signpost(210, 120));
+  } else {
+    layers.push(skyLayer(terrain, special));
+    layers.push(groundLayer(terrain, special, seed));
+
+    if (n === TERRAIN.mountain || (y === 0 && terrain !== TERRAIN.mountain)) {
+      layers.push(mountainBand("north", seed));
+    }
+    if (s === TERRAIN.mountain) {
+      layers.push(mountainBand("south", seed + 3));
+    }
+    if (w === TERRAIN.mountain || terrain === TERRAIN.mountain) {
+      layers.push(mountainEdge("west", seed + 5));
+    }
+    if (e === TERRAIN.mountain || terrain === TERRAIN.mountain) {
+      layers.push(mountainEdge("east", seed + 7));
+    }
+
+    if (terrain === TERRAIN.forest || n === TERRAIN.forest || e === TERRAIN.forest) {
+      layers.push(forestCluster(seed, terrain === TERRAIN.forest ? "dense" : "edge"));
+    }
+    if (terrain === TERRAIN.meadow) {
+      layers.push(meadowFlowers(seed));
+    }
+    if (terrain === TERRAIN.swamp || s === TERRAIN.swamp || e === TERRAIN.swamp) {
+      layers.push(waterCorner(seed, terrain === TERRAIN.swamp));
+    }
+    if (terrain === TERRAIN.plains || terrain === TERRAIN.meadow) {
+      layers.push(distantTrees(seed));
+    }
+
+    if (special) {
+      layers.push(specialLandmark(name, seed));
+    } else if (name === "Plains" && seed % 5 === 0) {
+      layers.push(signpost(210, 120));
+    }
   }
 
   // Party leader stands in the traversable mid-foreground
@@ -108,6 +117,11 @@ export function renderSceneSvg(
           <stop offset="0%" stop-color="#5a2040"/>
           <stop offset="100%" stop-color="#c46b4a"/>
         </linearGradient>
+        <linearGradient id="skyForestDeep" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#1a3d28"/>
+          <stop offset="55%" stop-color="#2f6b3a"/>
+          <stop offset="100%" stop-color="#4a8a48"/>
+        </linearGradient>
         <pattern id="grass" width="8" height="8" patternUnits="userSpaceOnUse">
           <rect width="8" height="8" fill="#6dbd4e"/>
           <rect x="0" y="0" width="2" height="2" fill="#7dce5c"/>
@@ -130,6 +144,10 @@ export function renderSceneSvg(
           <ellipse cx="3" cy="4" rx="3" ry="2" fill="#2f4a28" opacity="0.7"/>
           <ellipse cx="9" cy="9" rx="3" ry="2" fill="#4a6a38" opacity="0.5"/>
         </pattern>
+        <radialGradient id="forestVignette" cx="50%" cy="55%" r="65%">
+          <stop offset="45%" stop-color="#0a2214" stop-opacity="0"/>
+          <stop offset="100%" stop-color="#061810" stop-opacity="0.75"/>
+        </radialGradient>
       </defs>
       ${layers.join("\n")}
     </svg>
@@ -148,7 +166,11 @@ function skyLayer(terrain, special) {
     return `<rect width="${W}" height="78" fill="#6a7a55"/>`;
   }
   if (terrain === TERRAIN.forest) {
-    return `<rect width="${W}" height="78" fill="url(#skyDay)"/>`;
+    return `<rect width="${W}" height="82" fill="url(#skyForestDeep)"/>
+      <ellipse cx="40" cy="50" rx="55" ry="36" fill="#163822" opacity="0.55"/>
+      <ellipse cx="120" cy="42" rx="60" ry="40" fill="#1a4228" opacity="0.5"/>
+      <ellipse cx="210" cy="48" rx="70" ry="38" fill="#163822" opacity="0.55"/>
+      <ellipse cx="290" cy="40" rx="55" ry="34" fill="#1a4228" opacity="0.5"/>`;
   }
   return `<rect width="${W}" height="82" fill="url(#skyDay)"/>`;
 }
@@ -219,22 +241,114 @@ function tree(cx, cy, scale = 1) {
   `;
 }
 
+/** Taller, darker canopy tree for deep woodland scenes. */
+function deepTree(cx, cy, scale = 1) {
+  const r = 20 * scale;
+  const trunkH = 18 * scale;
+  return `
+    <g class="deep-tree">
+      <rect x="${cx - 3 * scale}" y="${cy + 2 * scale}" width="${6 * scale}" height="${trunkH}" fill="#4a2e18"/>
+      <rect x="${cx - 2 * scale}" y="${cy + 4 * scale}" width="${2 * scale}" height="${trunkH * 0.7}" fill="#6b4226" opacity="0.55"/>
+      <ellipse cx="${cx - 8 * scale}" cy="${cy}" rx="${r * 0.7}" ry="${r * 0.55}" fill="#145526"/>
+      <ellipse cx="${cx + 8 * scale}" cy="${cy}" rx="${r * 0.7}" ry="${r * 0.55}" fill="#0f4a20"/>
+      <ellipse cx="${cx}" cy="${cy - 4 * scale}" rx="${r}" ry="${r * 0.78}" fill="#1a6b30"/>
+      <ellipse cx="${cx}" cy="${cy - 14 * scale}" rx="${r * 0.7}" ry="${r * 0.55}" fill="#228038"/>
+      <ellipse cx="${cx}" cy="${cy - 22 * scale}" rx="${r * 0.42}" ry="${r * 0.36}" fill="#2d9444"/>
+      <ellipse cx="${cx - 5 * scale}" cy="${cy - 10 * scale}" rx="${r * 0.22}" ry="${r * 0.14}" fill="#4db85a" opacity="0.45"/>
+    </g>
+  `;
+}
+
 function forestCluster(seed, mode) {
   const trees = [];
-  const count = mode === "dense" ? 9 : 4;
+  const count = mode === "dense" ? 9 : mode === "deep" ? 14 : 4;
   for (let i = 0; i < count; i += 1) {
-    const tx = 30 + ((seed + i * 37) % 260);
-    const ty = 110 + ((seed + i * 17) % 70);
-    const sc = 0.85 + ((seed + i) % 3) * 0.15;
+    const tx = 20 + ((seed + i * 37) % 280);
+    const ty = 105 + ((seed + i * 17) % 75);
+    const sc = 0.85 + ((seed + i) % 3) * 0.18;
     trees.push(tree(tx, ty, sc));
   }
   // denser back row for forests
-  if (mode === "dense") {
-    for (let i = 0; i < 6; i += 1) {
-      trees.push(tree(20 + i * 50 + (seed % 5), 95 + ((i + seed) % 3) * 4, 1.05));
+  if (mode === "dense" || mode === "deep") {
+    for (let i = 0; i < 7; i += 1) {
+      trees.push(tree(16 + i * 46 + (seed % 5), 90 + ((i + seed) % 3) * 4, 1.15));
+    }
+  }
+  if (mode === "deep") {
+    for (let i = 0; i < 8; i += 1) {
+      trees.push(tree(10 + i * 42 + ((seed * 3) % 7), 150 + ((i * 11) % 20), 1.25));
     }
   }
   return `<g class="forest">${trees.join("")}</g>`;
+}
+
+/** Dense woodland clearing used for the starting Initial Sequence scene. */
+function deepForestScene(seed) {
+  const back = [];
+  const sides = [];
+  const fore = [];
+
+  // Solid back wall of tall canopy trees
+  for (let i = 0; i < 9; i += 1) {
+    back.push(deepTree(6 + i * 38 + (seed % 4), 92 + ((i + seed) % 3) * 3, 1.15 + (i % 2) * 0.08));
+  }
+  // Second back row, slightly forward — fills gaps
+  for (let i = 0; i < 8; i += 1) {
+    back.push(deepTree(24 + i * 40 + ((seed * 2) % 5), 108 + ((i * 3) % 5), 1.05));
+  }
+
+  // Left thicket (keep x < ~110 so center clearing stays open)
+  for (let i = 0; i < 6; i += 1) {
+    sides.push(deepTree(12 + ((seed + i * 23) % 78), 118 + i * 12, 1.1 + (i % 2) * 0.12));
+  }
+  // Right thicket (keep x > ~220)
+  for (let i = 0; i < 6; i += 1) {
+    sides.push(deepTree(235 + ((seed + i * 19) % 70), 116 + i * 12, 1.1 + (i % 2) * 0.12));
+  }
+
+  // Mid-side framing trees
+  sides.push(deepTree(88, 148, 1.15));
+  sides.push(deepTree(232, 146, 1.2));
+  sides.push(tree(70, 160, 0.95));
+  sides.push(tree(250, 158, 0.95));
+
+  // Foreground giants hugging the edges
+  fore.push(deepTree(10, 168, 1.4));
+  fore.push(deepTree(310, 168, 1.4));
+  fore.push(deepTree(38, 178, 1.25));
+  fore.push(deepTree(282, 176, 1.25));
+  fore.push(tree(58, 188, 1.05));
+  fore.push(tree(262, 186, 1.05));
+
+  return `
+    <g class="deep-forest">
+      <!-- Deep shade wash -->
+      <rect y="70" width="${W}" height="${H - 70}" fill="#0a2214" opacity="0.28"/>
+      <!-- Mossy clearing + trail (under trees) -->
+      <ellipse cx="160" cy="158" rx="54" ry="34" fill="#4a6a32" opacity="0.55"/>
+      <ellipse cx="160" cy="168" rx="40" ry="22" fill="#6a8f48" opacity="0.35"/>
+      <path d="M152 224 C158 195, 158 170, 162 140 C166 118, 168 98, 164 80"
+        fill="none" stroke="#5a7a3a" stroke-width="22" opacity="0.4"/>
+      <path d="M152 224 C158 195, 158 170, 162 140 C166 118, 168 98, 164 80"
+        fill="none" stroke="#7a9a52" stroke-width="10" opacity="0.45"/>
+      ${back.join("")}
+      ${sides.join("")}
+      <!-- Leaf litter / undergrowth at clearing edges -->
+      <ellipse cx="100" cy="155" rx="11" ry="4" fill="#2a4a20" opacity="0.75"/>
+      <ellipse cx="220" cy="150" rx="13" ry="5" fill="#2a4a20" opacity="0.7"/>
+      <ellipse cx="95" cy="175" rx="9" ry="3.5" fill="#3d5a28" opacity="0.7"/>
+      <ellipse cx="225" cy="172" rx="10" ry="4" fill="#3d5a28" opacity="0.65"/>
+      <!-- Mushrooms -->
+      <circle cx="104" cy="152" r="3" fill="#c4543a"/>
+      <circle cx="110" cy="154" r="2.5" fill="#e8d48a"/>
+      <circle cx="228" cy="148" r="3" fill="#c4543a"/>
+      <circle cx="98" cy="172" r="2.5" fill="#c4543a"/>
+      <circle cx="232" cy="170" r="2.5" fill="#e8d48a"/>
+      ${fore.join("")}
+      <!-- Soft vignette for deep-woods atmosphere -->
+      <rect y="70" width="${W}" height="${H - 70}" fill="url(#forestVignette)" opacity="0.55"/>
+    </g>
+  `;
 }
 
 function distantTrees(seed) {
@@ -314,10 +428,11 @@ function specialLandmark(name, seed) {
     case "Initial Sequence":
       return `
         <g class="landmark-start">
-          ${cottage(86, 120)}
-          ${signpost(150, 128)}
-          <circle cx="200" cy="150" r="10" fill="#c62828" opacity="0.9"/>
-          <circle cx="200" cy="150" r="4" fill="#f0c94d"/>
+          ${signpost(168, 132)}
+          <!-- Small quest marker in the forest clearing -->
+          <circle cx="200" cy="158" r="9" fill="#c62828" opacity="0.92"/>
+          <circle cx="200" cy="158" r="4" fill="#f0c94d"/>
+          <rect x="120" y="168" width="90" height="5" fill="#c62828" opacity="0.75"/>
         </g>`;
     case "Temple of Peace":
       return `
