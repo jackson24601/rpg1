@@ -1,0 +1,450 @@
+:root {
+  --ink: #0b1020;
+  --navy: #142044;
+  --panel: #1a2d62;
+  --gold: #f0c94d;
+  --cream: #f3e6b0;
+  --muted: #9eb0d8;
+  --danger: #c62828;
+  --ok: #4caf6a;
+  --stage-w: min(920px, 100%);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+}
+
+body.battle-page {
+  min-height: 100vh;
+  font-family: "VT323", monospace;
+  color: var(--cream);
+  background: #060a16;
+}
+
+.battle-backdrop {
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 30% 20%, rgba(80, 100, 120, 0.35), transparent 50%),
+    radial-gradient(ellipse at 70% 80%, rgba(40, 60, 40, 0.3), transparent 45%),
+    linear-gradient(180deg, #1a2230 0%, #0a101c 55%, #060a14 100%);
+  z-index: 0;
+}
+
+.battle-shell {
+  position: relative;
+  z-index: 1;
+  width: min(960px, 100%);
+  margin: 0 auto;
+  padding: 0.75rem;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.rpg-window {
+  background: linear-gradient(180deg, #1e3480 0%, var(--panel) 100%);
+  border: 4px solid var(--gold);
+  border-radius: 6px;
+  box-shadow:
+    0 0 0 3px var(--ink),
+    inset 0 0 0 2px rgba(243, 230, 176, 0.2);
+  padding: 0.7rem 0.85rem;
+}
+
+.battle-header {
+  text-align: center;
+}
+
+.battle-title {
+  margin: 0;
+  font-family: "Luckiest Guy", cursive;
+  font-size: clamp(1.6rem, 4vw, 2.2rem);
+  color: var(--gold);
+  letter-spacing: 0.04em;
+  font-weight: 400;
+}
+
+.battle-subtitle {
+  margin: 0.15rem 0 0;
+  color: var(--muted);
+  font-size: 1.25rem;
+}
+
+.battlefield {
+  padding: 0.45rem;
+}
+
+.battlefield__stage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border: 3px solid var(--ink);
+  border-radius: 4px;
+  background: #1c242e;
+  image-rendering: pixelated;
+}
+
+.battle-sky {
+  position: absolute;
+  inset: 0 0 42% 0;
+  background:
+    linear-gradient(180deg, #1a222c 0%, #2a3540 55%, #3a4650 100%);
+}
+
+.battle-sky::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 40% 30% at 20% 40%, rgba(0, 0, 0, 0.35), transparent),
+    radial-gradient(ellipse 50% 40% at 80% 20%, rgba(0, 0, 0, 0.4), transparent);
+}
+
+.battle-ground {
+  position: absolute;
+  inset: 48% 0 0 0;
+  background:
+    repeating-linear-gradient(
+      115deg,
+      #5a6570 0 6px,
+      #4e5862 6px 12px
+    ),
+    linear-gradient(180deg, #6a7580 0%, #3d4650 100%);
+  clip-path: polygon(0 18%, 100% 0, 100% 100%, 0 100%);
+}
+
+.battle-ground::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.25), transparent 35%);
+}
+
+.battle-side {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.battle-side--enemies,
+.battle-side--party {
+  pointer-events: none;
+}
+
+.battle-fighter {
+  position: absolute;
+  width: 14%;
+  max-width: 96px;
+  aspect-ratio: 40 / 48;
+  transform: translate(-50%, -70%);
+  pointer-events: auto;
+  cursor: default;
+  transition: filter 120ms ease, outline-color 120ms ease;
+  z-index: 2;
+}
+
+.battle-fighter img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: bottom center;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 3px 0 rgba(0, 0, 0, 0.45));
+  display: block;
+}
+
+.battle-fighter__shadow {
+  position: absolute;
+  left: 50%;
+  bottom: 2%;
+  width: 55%;
+  height: 10%;
+  transform: translateX(-50%);
+  background: radial-gradient(ellipse, rgba(0, 0, 0, 0.45), transparent 70%);
+  z-index: -1;
+}
+
+.battle-fighter__label {
+  position: absolute;
+  left: 50%;
+  top: -1.1rem;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 0.95rem;
+  color: var(--cream);
+  text-shadow: 0 1px 0 #000, 0 0 4px #000;
+  pointer-events: none;
+}
+
+.battle-fighter__hp {
+  position: absolute;
+  left: 10%;
+  right: 10%;
+  bottom: -0.55rem;
+  height: 5px;
+  background: #1a1020;
+  border: 1px solid #000;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.battle-fighter__hp > span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(180deg, #7dce5c, #3a8a3a);
+  width: 100%;
+}
+
+.battle-fighter.is-dead {
+  opacity: 0.35;
+  filter: grayscale(0.8);
+}
+
+.battle-fighter.is-active {
+  filter: drop-shadow(0 0 6px rgba(240, 201, 77, 0.85));
+}
+
+.battle-fighter.is-targetable {
+  cursor: pointer;
+  outline: 2px solid transparent;
+  animation: target-pulse 0.9s ease-in-out infinite;
+}
+
+.battle-fighter.is-targetable:hover,
+.battle-fighter.is-targetable:focus-visible {
+  outline-color: var(--gold);
+  filter: drop-shadow(0 0 8px rgba(240, 201, 77, 0.95));
+}
+
+.battle-fighter.is-defending img {
+  transform: scale(0.96);
+  filter: drop-shadow(0 0 5px rgba(120, 180, 255, 0.7));
+}
+
+@keyframes target-pulse {
+  0%,
+  100% {
+    outline-color: rgba(240, 201, 77, 0.25);
+  }
+  50% {
+    outline-color: rgba(240, 201, 77, 0.85);
+  }
+}
+
+/* Attack animations */
+.battle-fighter.is-lunging-enemy {
+  animation: lunge-enemy 0.55s ease-in-out;
+  z-index: 5;
+}
+
+.battle-fighter.is-lunging-party {
+  animation: lunge-party 0.55s ease-in-out;
+  z-index: 5;
+}
+
+.battle-fighter.is-slash img {
+  animation: slash-swing 0.45s ease-in-out;
+}
+
+.battle-fighter.is-thrust img {
+  animation: thrust-jab 0.4s ease-in-out;
+}
+
+.battle-fighter.is-strike img,
+.battle-fighter.is-club img,
+.battle-fighter.is-flying-fist img,
+.battle-fighter.is-fire-arrows img,
+.battle-fighter.is-double-strike img {
+  animation: strike-hit 0.4s ease-in-out;
+}
+
+.battle-fighter.is-hit {
+  animation: take-hit 0.35s ease;
+}
+
+.battle-fighter.is-cast img {
+  animation: cast-glow 0.55s ease;
+}
+
+@keyframes lunge-enemy {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  45% {
+    translate: 28% 18%;
+  }
+}
+
+@keyframes lunge-party {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  45% {
+    translate: -28% -16%;
+  }
+}
+
+@keyframes slash-swing {
+  0%,
+  100% {
+    rotate: 0deg;
+  }
+  30% {
+    rotate: -28deg;
+  }
+  55% {
+    rotate: 35deg;
+  }
+}
+
+@keyframes thrust-jab {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  40% {
+    translate: -10px -6px;
+  }
+}
+
+@keyframes strike-hit {
+  0%,
+  100% {
+    scale: 1;
+  }
+  40% {
+    scale: 1.12;
+  }
+}
+
+@keyframes take-hit {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  30% {
+    translate: 4px 0;
+    filter: brightness(1.6);
+  }
+  60% {
+    translate: -4px 0;
+  }
+}
+
+@keyframes cast-glow {
+  0%,
+  100% {
+    filter: drop-shadow(0 3px 0 rgba(0, 0, 0, 0.45));
+  }
+  40% {
+    filter: drop-shadow(0 0 10px rgba(140, 200, 255, 0.95));
+  }
+}
+
+.battle-hud {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.battle-log {
+  margin: 0;
+  min-height: 1.4em;
+  font-size: 1.35rem;
+  color: var(--cream);
+}
+
+.battle-actor {
+  font-size: 1.2rem;
+  color: var(--gold);
+  min-height: 1.3em;
+}
+
+.battle-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.battle-btn {
+  appearance: none;
+  font-family: inherit;
+  font-size: 1.2rem;
+  color: var(--ink);
+  background: linear-gradient(180deg, #ffe28a, var(--gold));
+  border: 3px solid var(--ink);
+  border-radius: 4px;
+  padding: 0.4rem 0.85rem 0.3rem;
+  cursor: pointer;
+}
+
+.battle-btn:hover:not(:disabled),
+.battle-btn:focus-visible {
+  filter: brightness(1.08);
+}
+
+.battle-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.battle-btn--ghost {
+  background: linear-gradient(180deg, #4a6ab0, #2a4580);
+  color: var(--cream);
+}
+
+.battle-btn--primary {
+  min-width: 140px;
+}
+
+.battle-prompt {
+  margin: 0;
+  color: var(--muted);
+  font-size: 1.15rem;
+  min-height: 1.3em;
+}
+
+.battle-end {
+  display: flex;
+  justify-content: center;
+  padding-top: 0.25rem;
+}
+
+@media (max-width: 640px) {
+  .battle-fighter__label {
+    font-size: 0.8rem;
+    top: -0.9rem;
+  }
+
+  .battle-btn {
+    font-size: 1.05rem;
+    padding: 0.35rem 0.65rem 0.25rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .battle-fighter.is-lunging-enemy,
+  .battle-fighter.is-lunging-party,
+  .battle-fighter.is-slash img,
+  .battle-fighter.is-thrust img,
+  .battle-fighter.is-strike img,
+  .battle-fighter.is-club img,
+  .battle-fighter.is-flying-fist img,
+  .battle-fighter.is-fire-arrows img,
+  .battle-fighter.is-double-strike img,
+  .battle-fighter.is-hit,
+  .battle-fighter.is-cast img,
+  .battle-fighter.is-targetable {
+    animation: none;
+  }
+}
