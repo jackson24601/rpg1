@@ -304,7 +304,9 @@ function beginCommandPhase() {
   commandIndex = 0;
   plans.clear();
   pendingAction = null;
+  outcome = null;
   clearTargetables();
+  hideEndPanel();
   party.forEach((p) => {
     p.defending = false;
   });
@@ -318,16 +320,36 @@ function beginCommandPhase() {
   promptNextCommand();
 }
 
+function hideEndPanel() {
+  endPanel.hidden = true;
+  endBtn.textContent = "Continue";
+}
+
+function showExecuteContinue() {
+  phase = "ready";
+  pendingAction = null;
+  clearActive();
+  clearTargetables();
+  actionMenu.innerHTML = "";
+  actorPanel.textContent = "All party actions chosen.";
+  setLog("Ready to fight!");
+  setPrompt("Press Continue to resolve attacks, then the enemy turn.");
+  endPanel.hidden = false;
+  endBtn.textContent = "Continue";
+  endBtn.disabled = false;
+}
+
 function promptNextCommand() {
   const actor = currentCommandActor();
   if (!actor) {
-    void resolveRound();
+    showExecuteContinue();
     return;
   }
 
   phase = "command";
   pendingAction = null;
   clearTargetables();
+  hideEndPanel();
   markActive(actor);
   actorPanel.textContent = `${actor.name}'s turn — HP ${actor.hitPoints}/${actor.maxHitPoints} · STA ${actor.stamina ?? "—"}/${actor.maxStamina ?? "—"}`;
   setPrompt("Choose one action for this round.");
@@ -337,7 +359,7 @@ function promptNextCommand() {
 
 function renderActionMenu(actor) {
   actionMenu.innerHTML = "";
-  endPanel.hidden = true;
+  hideEndPanel();
 
   const cls = getCharacterClass(actor.id);
   const attackTypes = actor.attackTypes?.length
@@ -469,6 +491,7 @@ async function resolveRound() {
   clearActive();
   clearTargetables();
   actionMenu.innerHTML = "";
+  hideEndPanel();
   setPrompt("Combat sequence…");
 
   // Party actions in order
@@ -744,6 +767,7 @@ async function endBattle(result) {
   clearActive();
   actionMenu.innerHTML = "";
   endPanel.hidden = false;
+  endBtn.disabled = false;
 
   if (result === "win") {
     setLog("Victory! All enemies have fallen.");
@@ -759,10 +783,20 @@ async function endBattle(result) {
 }
 
 endBtn.addEventListener("click", () => {
+  // After party commands are locked, Continue runs the round (party moves → enemy turns).
+  if (phase === "ready" && !outcome) {
+    endBtn.disabled = true;
+    void resolveRound();
+    return;
+  }
+
   if (outcome === "win") {
     sessionStorage.removeItem(BATTLE_KEY);
     window.location.href = "game.html";
-  } else {
+    return;
+  }
+
+  if (outcome === "lose") {
     sessionStorage.removeItem(BATTLE_KEY);
     window.location.href = "party.html";
   }
@@ -784,9 +818,9 @@ function init() {
     setLog("No party found. Choose adventurers first.");
     endPanel.hidden = false;
     endBtn.textContent = "Choose Party";
-    endBtn.onclick = () => {
-      window.location.href = "party.html";
-    };
+    endBtn.disabled = false;
+    phase = "ended";
+    outcome = "lose";
     return;
   }
 

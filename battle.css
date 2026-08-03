@@ -435,9 +435,16 @@ body.battle-page {
 }
 
 .battle-end {
-  display: flex;
   justify-content: center;
   padding-top: 0.25rem;
+}
+
+.battle-end:not([hidden]) {
+  display: flex;
+}
+
+.battle-end[hidden] {
+  display: none !important;
 }
 
 @media (max-width: 640px) {
