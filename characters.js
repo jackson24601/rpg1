@@ -11,6 +11,7 @@
  * - Intelligence: required to cast spells (MIN_INTELLIGENCE_TO_CAST+).
  * - attackTypes / defendType: labels for the action buttons on that
  *   character's turn (e.g. ["Slash", "Thrust"], "Parry").
+ *   Special attack behavior is defined in ATTACK_MOVES when needed.
  * - spells: optional spell ids offered on that character's turn
  *   (see SPELLS for names and effects).
  */
@@ -27,6 +28,20 @@ export const SUCCESS_SCALE = 10;
  * @property {string} description
  * @property {{ type: string, amount?: number, multiplier?: number, turns?: number }} effect
  */
+
+/**
+ * Special attack-move rules keyed by button label.
+ * Ordinary attacks (Slash, Thrust, etc.) need no entry.
+ * @type {Record<string, { name: string, description: string, effect: { type: string, multiplier?: number } }>}
+ */
+export const ATTACK_MOVES = {
+  "Double Strike": {
+    name: "Double Strike",
+    description:
+      "If this attack is successful, it deals double damage to the opponent.",
+    effect: { type: "damageMultiplierOnHit", multiplier: 2 },
+  },
+};
 
 /** @type {Record<string, SpellDef>} */
 export const SPELLS = {
@@ -240,6 +255,14 @@ export const CLASSES = [
     blurb: "Sneaky burst damage and skill mastery.",
     detail:
       "Rogue — Sneaky damage dealer, best at skills and non-magical tricks, high burst damage.",
+    hitPoints: 60,
+    attack: 6,
+    defend: 7,
+    stamina: 7,
+    intelligence: 6,
+    attackTypes: ["Double Strike"],
+    defendType: "Dodge",
+    spells: [],
   },
   {
     id: "monk",
@@ -319,6 +342,26 @@ export function getAttackTypes(cls) {
     return [cls.attackType];
   }
   return [];
+}
+
+export function getAttackMove(attackTypeName) {
+  return ATTACK_MOVES[attackTypeName] || null;
+}
+
+/** Damage multiplier applied when the named attack hits successfully. */
+export function attackDamageMultiplier(attackTypeName) {
+  const move = getAttackMove(attackTypeName);
+  if (move?.effect?.type === "damageMultiplierOnHit") {
+    const multiplier = Number(move.effect.multiplier);
+    return Number.isFinite(multiplier) ? multiplier : 1;
+  }
+  return 1;
+}
+
+export function resolveAttackDamage(baseDamage, attackTypeName, didHit) {
+  if (!didHit) return 0;
+  const base = Number(baseDamage) || 0;
+  return base * attackDamageMultiplier(attackTypeName);
 }
 
 /**
@@ -515,6 +558,11 @@ export function createCombatant(classId) {
   if (!cls || !hasCombatStats(cls)) return null;
   const attackTypes = getAttackTypes(cls);
   const spellDefs = getClassSpells(cls);
+  const attackMoves = Object.fromEntries(
+    attackTypes
+      .map((name) => [name, getAttackMove(name)])
+      .filter(([, move]) => move)
+  );
   return {
     id: cls.id,
     name: cls.name,
@@ -527,6 +575,7 @@ export function createCombatant(classId) {
     intelligence: getIntelligence(cls),
     attackTypes,
     attackType: attackTypes[0] || null,
+    attackMoves,
     defendType: cls.defendType,
     spells: spellDefs.map((s) => s.id),
     spellNames: spellDefs.map((s) => s.name),
@@ -564,12 +613,20 @@ export function formatCombatStats(cls) {
   const intelligence = getIntelligence(cls);
   const intLabel = intelligence === null ? "—" : String(intelligence);
 
-  return [
+  const attackNotes = attackTypes
+    .map((name) => getAttackMove(name))
+    .filter(Boolean)
+    .map((move) => `  · ${move.name}: ${move.description}`)
+    .join("\n");
+
+  const lines = [
     cls.detail,
     "",
     `HP ${cls.hitPoints}  ·  Attack ${cls.attack}/${SUCCESS_SCALE}  ·  Defend ${cls.defend}/${SUCCESS_SCALE}`,
     `Stamina ${cls.stamina}  ·  Intelligence ${intLabel}`,
     `Attack: ${attackTypes.join(", ") || "—"}  ·  Defend: ${cls.defendType || "—"}`,
-    spellLine,
-  ].join("\n");
+  ];
+  if (attackNotes) lines.push(attackNotes);
+  lines.push(spellLine);
+  return lines.join("\n");
 }
