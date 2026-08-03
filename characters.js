@@ -82,6 +82,19 @@ export const SPELLS = {
       "For the next two turns, the chosen character cannot receive damage.",
     effect: { type: "preventTargetDamageTurns", turns: 2 },
   },
+  restore: {
+    id: "restore",
+    name: "Restore",
+    description: "Restore a chosen character's stamina to full.",
+    effect: { type: "restoreStaminaFull" },
+  },
+  "verdant-shield": {
+    id: "verdant-shield",
+    name: "Verdant Shield",
+    description:
+      "Any damage dealt next turn to any character is reduced by 25%.",
+    effect: { type: "allDamageTakenReduceNextTurn", multiplier: 0.75 },
+  },
 };
 
 /**
@@ -212,6 +225,14 @@ export const CLASSES = [
     blurb: "Nature magic, wildshape, and healing.",
     detail:
       "Druid — Nature spellcaster, can wildshape into animals, healer.",
+    hitPoints: 50,
+    attack: 2,
+    defend: 4,
+    stamina: 7,
+    intelligence: 10,
+    attackTypes: ["Strike"],
+    defendType: "Dodge",
+    spells: ["restore", "verdant-shield"],
   },
   {
     id: "rogue",
@@ -309,7 +330,10 @@ export function getAttackTypes(cls) {
  * @param {{
  *   target?: object,
  *   opponents?: object[],
- *   battle?: { enemyDamageMultiplierNextTurn?: number }
+ *   battle?: {
+ *     enemyDamageMultiplierNextTurn?: number,
+ *     allDamageTakenMultiplierNextTurn?: number
+ *   }
  * }} [context]
  */
 export function applySpell(caster, spellId, context = {}) {
@@ -443,6 +467,43 @@ export function applySpell(caster, spellId, context = {}) {
       name: spell.name,
       targetId: target.id,
       damageImmuneTurns: target.damageImmuneTurns,
+    };
+  }
+
+  if (spell.effect.type === "restoreStaminaFull") {
+    const target = context.target;
+    if (!target || typeof target.stamina !== "number") {
+      return { ok: false, reason: "needs-target" };
+    }
+    const max =
+      typeof target.maxStamina === "number" ? target.maxStamina : target.stamina;
+    const before = target.stamina;
+    target.stamina = max;
+    return {
+      ok: true,
+      spellId: spell.id,
+      name: spell.name,
+      targetId: target.id,
+      staminaRestored: target.stamina - before,
+      stamina: target.stamina,
+      maxStamina: max,
+    };
+  }
+
+  if (spell.effect.type === "allDamageTakenReduceNextTurn") {
+    const battle = context.battle;
+    if (!battle) {
+      return { ok: false, reason: "needs-battle" };
+    }
+    const multiplier = Number(spell.effect.multiplier);
+    battle.allDamageTakenMultiplierNextTurn = Number.isFinite(multiplier)
+      ? multiplier
+      : 0.75;
+    return {
+      ok: true,
+      spellId: spell.id,
+      name: spell.name,
+      allDamageTakenMultiplierNextTurn: battle.allDamageTakenMultiplierNextTurn,
     };
   }
 
