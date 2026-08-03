@@ -307,6 +307,8 @@ export const CLASSES = [
     defend: 4,
     stamina: 6,
     intelligence: 7,
+    attackTypes: ["Strike"],
+    defendType: "Dodge",
     // Intelligence qualifies for casting, but the Bard starts with no spells.
     spells: [],
     skills: ["song-of-strength"],
