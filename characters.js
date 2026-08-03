@@ -25,7 +25,7 @@ export const SUCCESS_SCALE = 10;
  * @property {string} id
  * @property {string} name          button label in combat
  * @property {string} description
- * @property {{ type: string, amount?: number }} effect
+ * @property {{ type: string, amount?: number, multiplier?: number }} effect
  */
 
 /** @type {Record<string, SpellDef>} */
@@ -36,6 +36,25 @@ export const SPELLS = {
     description:
       "Restore 5 hit points to the caster. Cannot exceed maximum hit points.",
     effect: { type: "healSelf", amount: 5 },
+  },
+  "lightning-strike": {
+    id: "lightning-strike",
+    name: "Lightning Strike",
+    description: "Deal 5 damage to a chosen target.",
+    effect: { type: "damageTarget", amount: 5 },
+  },
+  fireball: {
+    id: "fireball",
+    name: "Fireball",
+    description: "Deal 5 damage to a chosen target.",
+    effect: { type: "damageTarget", amount: 5 },
+  },
+  shield: {
+    id: "shield",
+    name: "Shield",
+    description:
+      "Reduce all damage dealt by enemies on the following turn by 50%.",
+    effect: { type: "enemyDamageReduceNextTurn", multiplier: 0.5 },
   },
 };
 
@@ -123,6 +142,14 @@ export const CLASSES = [
     blurb: "Book-learned caster with vast spell variety.",
     detail:
       "Wizard — Book-learned spellcaster, wide spell variety, squishy but powerful.",
+    hitPoints: 50,
+    attack: 2,
+    defend: 2,
+    stamina: 3,
+    intelligence: 10,
+    attackTypes: ["Strike"],
+    defendType: "Dodge",
+    spells: ["lightning-strike", "fireball", "shield"],
   },
   {
     id: "sorcerer",
@@ -232,33 +259,73 @@ export function getAttackTypes(cls) {
 }
 
 /**
- * Apply a known spell to a combatant. Returns a result describing the change.
+ * Apply a known spell. Returns a result describing the change.
  * Battle UI is not wired yet — this encodes the mechanical effect.
+ *
+ * @param {object} caster
+ * @param {string} spellId
+ * @param {{ target?: object, battle?: { enemyDamageMultiplierNextTurn?: number } }} [context]
  */
-export function applySpell(combatant, spellId) {
+export function applySpell(caster, spellId, context = {}) {
   const spell = getSpell(spellId);
-  if (!combatant || !spell) {
+  if (!caster || !spell) {
     return { ok: false, reason: "unknown-spell" };
   }
   if (
-    typeof combatant.intelligence !== "number" ||
-    combatant.intelligence < MIN_INTELLIGENCE_TO_CAST
+    typeof caster.intelligence !== "number" ||
+    caster.intelligence < MIN_INTELLIGENCE_TO_CAST
   ) {
     return { ok: false, reason: "intelligence-too-low" };
   }
 
   if (spell.effect.type === "healSelf") {
-    const before = combatant.hitPoints;
-    const max = combatant.maxHitPoints;
+    const before = caster.hitPoints;
+    const max = caster.maxHitPoints;
     const amount = Number(spell.effect.amount) || 0;
-    combatant.hitPoints = Math.min(max, before + amount);
+    caster.hitPoints = Math.min(max, before + amount);
     return {
       ok: true,
       spellId: spell.id,
       name: spell.name,
-      healed: combatant.hitPoints - before,
-      hitPoints: combatant.hitPoints,
+      healed: caster.hitPoints - before,
+      hitPoints: caster.hitPoints,
       maxHitPoints: max,
+    };
+  }
+
+  if (spell.effect.type === "damageTarget") {
+    const target = context.target;
+    if (!target || typeof target.hitPoints !== "number") {
+      return { ok: false, reason: "needs-target" };
+    }
+    const amount = Number(spell.effect.amount) || 0;
+    const before = target.hitPoints;
+    target.hitPoints = Math.max(0, before - amount);
+    if (target.hitPoints <= 0) target.alive = false;
+    return {
+      ok: true,
+      spellId: spell.id,
+      name: spell.name,
+      damage: before - target.hitPoints,
+      targetId: target.id,
+      targetHitPoints: target.hitPoints,
+    };
+  }
+
+  if (spell.effect.type === "enemyDamageReduceNextTurn") {
+    const battle = context.battle;
+    if (!battle) {
+      return { ok: false, reason: "needs-battle" };
+    }
+    const multiplier = Number(spell.effect.multiplier);
+    battle.enemyDamageMultiplierNextTurn = Number.isFinite(multiplier)
+      ? multiplier
+      : 0.5;
+    return {
+      ok: true,
+      spellId: spell.id,
+      name: spell.name,
+      enemyDamageMultiplierNextTurn: battle.enemyDamageMultiplierNextTurn,
     };
   }
 
