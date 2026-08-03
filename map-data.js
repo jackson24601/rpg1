@@ -27,8 +27,9 @@ export const SPECIALS = {
 export const START = { x: 3, y: 11 };
 
 /**
- * Base terrain for every cell. Specials override the visual to red
- * but remain walkable; mountains are impassable.
+ * Base terrain for every cell. Specials (red landmark cells) and
+ * mountains are impassable for now — specials will be built out later.
+ * The party may still begin on Initial Sequence via START.
  */
 const RAW = [
   ["M", "M", "M", "M", "M", "M", "M", "S"], // Dragon Castle
@@ -81,7 +82,7 @@ export function buildMap() {
         y,
         terrain,
         name: resolvedName,
-        walkable: terrain !== TERRAIN.mountain,
+        walkable: terrain !== TERRAIN.mountain && terrain !== TERRAIN.special,
         special: terrain === TERRAIN.special,
       });
     }

@@ -241,7 +241,11 @@ async function transitionScene(dx, dy) {
   }
 
   if (!target.walkable) {
-    setStatus("Impassable mountains block your path.");
+    if (target.special) {
+      setStatus(`${target.name} is sealed for now. Return when it is ready.`);
+    } else {
+      setStatus("Impassable mountains block your path.");
+    }
     return;
   }
 
