@@ -56,6 +56,18 @@ export const SPELLS = {
       "Reduce all damage dealt by enemies on the following turn by 50%.",
     effect: { type: "enemyDamageReduceNextTurn", multiplier: 0.5 },
   },
+  "acid-rain": {
+    id: "acid-rain",
+    name: "Acid Rain",
+    description: "Deal 2 damage to all opponents.",
+    effect: { type: "damageAllOpponents", amount: 2 },
+  },
+  "hold-fast": {
+    id: "hold-fast",
+    name: "Hold Fast",
+    description: "Chosen opponent cannot attack on their next turn.",
+    effect: { type: "preventTargetAttackNextTurn" },
+  },
 };
 
 /**
@@ -157,6 +169,12 @@ export const CLASSES = [
     blurb: "Innate magic with flexible casting.",
     detail:
       "Sorcerer — Innate spellcaster (magic in their blood), fewer spells but more flexibility.",
+    hitPoints: 50,
+    attack: 2,
+    defend: 2,
+    stamina: 4,
+    intelligence: 10,
+    spells: ["fireball", "acid-rain", "hold-fast"],
   },
   {
     id: "cleric",
@@ -264,7 +282,11 @@ export function getAttackTypes(cls) {
  *
  * @param {object} caster
  * @param {string} spellId
- * @param {{ target?: object, battle?: { enemyDamageMultiplierNextTurn?: number } }} [context]
+ * @param {{
+ *   target?: object,
+ *   opponents?: object[],
+ *   battle?: { enemyDamageMultiplierNextTurn?: number }
+ * }} [context]
  */
 export function applySpell(caster, spellId, context = {}) {
   const spell = getSpell(spellId);
@@ -312,6 +334,34 @@ export function applySpell(caster, spellId, context = {}) {
     };
   }
 
+  if (spell.effect.type === "damageAllOpponents") {
+    const opponents = context.opponents;
+    if (!Array.isArray(opponents) || !opponents.length) {
+      return { ok: false, reason: "needs-opponents" };
+    }
+    const amount = Number(spell.effect.amount) || 0;
+    const hits = opponents.map((target) => {
+      if (!target || typeof target.hitPoints !== "number") {
+        return { targetId: target?.id, damage: 0 };
+      }
+      const before = target.hitPoints;
+      target.hitPoints = Math.max(0, before - amount);
+      if (target.hitPoints <= 0) target.alive = false;
+      return {
+        targetId: target.id,
+        damage: before - target.hitPoints,
+        targetHitPoints: target.hitPoints,
+      };
+    });
+    return {
+      ok: true,
+      spellId: spell.id,
+      name: spell.name,
+      hits,
+      totalDamage: hits.reduce((sum, hit) => sum + hit.damage, 0),
+    };
+  }
+
   if (spell.effect.type === "enemyDamageReduceNextTurn") {
     const battle = context.battle;
     if (!battle) {
@@ -326,6 +376,21 @@ export function applySpell(caster, spellId, context = {}) {
       spellId: spell.id,
       name: spell.name,
       enemyDamageMultiplierNextTurn: battle.enemyDamageMultiplierNextTurn,
+    };
+  }
+
+  if (spell.effect.type === "preventTargetAttackNextTurn") {
+    const target = context.target;
+    if (!target) {
+      return { ok: false, reason: "needs-target" };
+    }
+    target.cannotAttackNextTurn = true;
+    return {
+      ok: true,
+      spellId: spell.id,
+      name: spell.name,
+      targetId: target.id,
+      cannotAttackNextTurn: true,
     };
   }
 
