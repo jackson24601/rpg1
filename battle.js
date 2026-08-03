@@ -43,23 +43,23 @@ let pendingAction = null;
 let outcome = null;
 
 const PARTY_SLOTS = [
-  { left: "78%", top: "72%" },
-  { left: "88%", top: "62%" },
-  { left: "68%", top: "58%" },
+  { left: "72%", top: "78%" },
+  { left: "86%", top: "68%" },
+  { left: "78%", top: "52%" },
 ];
 
 const SUMMON_SLOTS = [
-  { left: "58%", top: "70%" },
-  { left: "62%", top: "52%" },
+  { left: "58%", top: "74%" },
+  { left: "64%", top: "56%" },
 ];
 
 const ENEMY_SLOTS = [
-  { left: "22%", top: "38%" },
-  { left: "34%", top: "30%" },
-  { left: "14%", top: "28%" },
+  { left: "18%", top: "36%" },
+  { left: "36%", top: "28%" },
+  { left: "10%", top: "24%" },
   { left: "28%", top: "48%" },
-  { left: "40%", top: "42%" },
-  { left: "12%", top: "44%" },
+  { left: "44%", top: "40%" },
+  { left: "8%", top: "46%" },
 ];
 
 function loadBattlePayload() {
@@ -304,7 +304,9 @@ function beginCommandPhase() {
   commandIndex = 0;
   plans.clear();
   pendingAction = null;
+  outcome = null;
   clearTargetables();
+  hideEndPanel();
   party.forEach((p) => {
     p.defending = false;
   });
@@ -318,16 +320,36 @@ function beginCommandPhase() {
   promptNextCommand();
 }
 
+function hideEndPanel() {
+  endPanel.hidden = true;
+  endBtn.textContent = "Continue";
+}
+
+function showExecuteContinue() {
+  phase = "ready";
+  pendingAction = null;
+  clearActive();
+  clearTargetables();
+  actionMenu.innerHTML = "";
+  actorPanel.textContent = "All party actions chosen.";
+  setLog("Ready to fight!");
+  setPrompt("Press Continue to resolve attacks, then the enemy turn.");
+  endPanel.hidden = false;
+  endBtn.textContent = "Continue";
+  endBtn.disabled = false;
+}
+
 function promptNextCommand() {
   const actor = currentCommandActor();
   if (!actor) {
-    void resolveRound();
+    showExecuteContinue();
     return;
   }
 
   phase = "command";
   pendingAction = null;
   clearTargetables();
+  hideEndPanel();
   markActive(actor);
   actorPanel.textContent = `${actor.name}'s turn — HP ${actor.hitPoints}/${actor.maxHitPoints} · STA ${actor.stamina ?? "—"}/${actor.maxStamina ?? "—"}`;
   setPrompt("Choose one action for this round.");
@@ -337,7 +359,7 @@ function promptNextCommand() {
 
 function renderActionMenu(actor) {
   actionMenu.innerHTML = "";
-  endPanel.hidden = true;
+  hideEndPanel();
 
   const cls = getCharacterClass(actor.id);
   const attackTypes = actor.attackTypes?.length
@@ -469,6 +491,7 @@ async function resolveRound() {
   clearActive();
   clearTargetables();
   actionMenu.innerHTML = "";
+  hideEndPanel();
   setPrompt("Combat sequence…");
 
   // Party actions in order
@@ -744,6 +767,7 @@ async function endBattle(result) {
   clearActive();
   actionMenu.innerHTML = "";
   endPanel.hidden = false;
+  endBtn.disabled = false;
 
   if (result === "win") {
     setLog("Victory! All enemies have fallen.");
@@ -759,10 +783,20 @@ async function endBattle(result) {
 }
 
 endBtn.addEventListener("click", () => {
+  // After party commands are locked, Continue runs the round (party moves → enemy turns).
+  if (phase === "ready" && !outcome) {
+    endBtn.disabled = true;
+    void resolveRound();
+    return;
+  }
+
   if (outcome === "win") {
     sessionStorage.removeItem(BATTLE_KEY);
     window.location.href = "game.html";
-  } else {
+    return;
+  }
+
+  if (outcome === "lose") {
     sessionStorage.removeItem(BATTLE_KEY);
     window.location.href = "party.html";
   }
@@ -784,9 +818,9 @@ function init() {
     setLog("No party found. Choose adventurers first.");
     endPanel.hidden = false;
     endBtn.textContent = "Choose Party";
-    endBtn.onclick = () => {
-      window.location.href = "party.html";
-    };
+    endBtn.disabled = false;
+    phase = "ended";
+    outcome = "lose";
     return;
   }
 
