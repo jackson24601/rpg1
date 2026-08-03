@@ -188,6 +188,8 @@ export const CLASSES = [
     defend: 2,
     stamina: 4,
     intelligence: 10,
+    attackTypes: ["Strike"],
+    defendType: "Dodge",
     spells: ["fireball", "acid-rain", "hold-fast"],
   },
   {
