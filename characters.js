@@ -108,6 +108,13 @@ export const CLASSES = [
     blurb: "Archer-tracker hybrid with light magic.",
     detail:
       "Ranger — Archer/tracker hybrid, ranged combat with some spellcasting.",
+    hitPoints: 60,
+    attack: 7,
+    defend: 7,
+    stamina: 9,
+    attackTypes: ["Fire Arrows"],
+    defendType: "Dodge",
+    spells: [],
   },
   {
     id: "wizard",
@@ -178,9 +185,12 @@ export function hasCombatStats(cls) {
       typeof cls.hitPoints === "number" &&
       typeof cls.attack === "number" &&
       typeof cls.defend === "number" &&
-      typeof cls.stamina === "number" &&
-      typeof cls.intelligence === "number"
+      typeof cls.stamina === "number"
   );
+}
+
+export function getIntelligence(cls) {
+  return typeof cls?.intelligence === "number" ? cls.intelligence : null;
 }
 
 export function getSpell(spellId) {
@@ -193,10 +203,11 @@ export function getClassSpells(cls) {
 }
 
 export function canCastSpells(cls) {
+  const intelligence = getIntelligence(cls);
   return Boolean(
     cls &&
-      typeof cls.intelligence === "number" &&
-      cls.intelligence >= MIN_INTELLIGENCE_TO_CAST &&
+      intelligence !== null &&
+      intelligence >= MIN_INTELLIGENCE_TO_CAST &&
       getClassSpells(cls).length > 0
   );
 }
@@ -267,7 +278,7 @@ export function createCombatant(classId) {
     defend: cls.defend,
     maxStamina: cls.stamina,
     stamina: cls.stamina,
-    intelligence: cls.intelligence,
+    intelligence: getIntelligence(cls),
     attackTypes,
     attackType: attackTypes[0] || null,
     defendType: cls.defendType,
@@ -293,17 +304,25 @@ export function formatCombatStats(cls) {
       .map((s) => `  · ${s.name}: ${s.description}`)
       .join("\n");
     spellLine = `Spells: ${names}\n${notes}`;
-  } else if (cls.intelligence >= MIN_INTELLIGENCE_TO_CAST) {
-    spellLine = "Spells: none";
   } else {
-    spellLine = `Spells: none (needs Intelligence ${MIN_INTELLIGENCE_TO_CAST}+ to cast)`;
+    const intelligence = getIntelligence(cls);
+    if (intelligence === null) {
+      spellLine = "Spells: none";
+    } else if (intelligence >= MIN_INTELLIGENCE_TO_CAST) {
+      spellLine = "Spells: none";
+    } else {
+      spellLine = `Spells: none (needs Intelligence ${MIN_INTELLIGENCE_TO_CAST}+ to cast)`;
+    }
   }
+
+  const intelligence = getIntelligence(cls);
+  const intLabel = intelligence === null ? "—" : String(intelligence);
 
   return [
     cls.detail,
     "",
     `HP ${cls.hitPoints}  ·  Attack ${cls.attack}/${SUCCESS_SCALE}  ·  Defend ${cls.defend}/${SUCCESS_SCALE}`,
-    `Stamina ${cls.stamina}  ·  Intelligence ${cls.intelligence}`,
+    `Stamina ${cls.stamina}  ·  Intelligence ${intLabel}`,
     `Attack: ${attackTypes.join(", ") || "—"}  ·  Defend: ${cls.defendType || "—"}`,
     spellLine,
   ].join("\n");
