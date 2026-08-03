@@ -14,6 +14,7 @@
  *   Special attack behavior is defined in ATTACK_MOVES when needed.
  * - spells: optional spell ids offered on that character's turn
  *   (see SPELLS for names and effects).
+ * - skills: optional non-spell combat skill ids (see SKILLS).
  */
 
 export const STAMINA_LOSS_PER_ROUND = 0.5;
@@ -40,6 +41,20 @@ export const ATTACK_MOVES = {
     description:
       "If this attack is successful, it deals double damage to the opponent.",
     effect: { type: "damageMultiplierOnHit", multiplier: 2 },
+  },
+};
+
+/**
+ * Non-spell combat skills (usable even when a class has no starting spells).
+ * @type {Record<string, { id: string, name: string, description: string, effect: { type: string, amount?: number } }>}
+ */
+export const SKILLS = {
+  "song-of-strength": {
+    id: "song-of-strength",
+    name: "Song of Strength",
+    description:
+      "Add +1 stamina to all characters, up to each character's maximum stamina.",
+    effect: { type: "staminaAllCharacters", amount: 1 },
   },
 };
 
@@ -126,6 +141,7 @@ export const SPELLS = {
  * @property {string[]} [attackTypes] combat attack button labels
  * @property {string} [defendType]    combat defend button label
  * @property {string[]} [spells]      spell ids from SPELLS
+ * @property {string[]} [skills]      skill ids from SKILLS
  */
 
 /** @type {CharacterClass[]} */
@@ -286,6 +302,14 @@ export const CLASSES = [
     blurb: "Charming buffer, skill monkey, and support caster.",
     detail:
       "Bard — Jack-of-all-trades spellcaster, skill monkey, buffer/debuffer with charm magic.",
+    hitPoints: 40,
+    attack: 0,
+    defend: 4,
+    stamina: 6,
+    intelligence: 7,
+    // Intelligence qualifies for casting, but the Bard starts with no spells.
+    spells: [],
+    skills: ["song-of-strength"],
   },
   {
     id: "warlock",
@@ -323,6 +347,15 @@ export function getSpell(spellId) {
 export function getClassSpells(cls) {
   if (!cls || !Array.isArray(cls.spells)) return [];
   return cls.spells.map(getSpell).filter(Boolean);
+}
+
+export function getSkill(skillId) {
+  return SKILLS[skillId] || null;
+}
+
+export function getClassSkills(cls) {
+  if (!cls || !Array.isArray(cls.skills)) return [];
+  return cls.skills.map(getSkill).filter(Boolean);
 }
 
 export function canCastSpells(cls) {
@@ -562,11 +595,59 @@ export function applySpell(caster, spellId, context = {}) {
   return { ok: false, reason: "unsupported-effect" };
 }
 
+/**
+ * Apply a non-spell combat skill.
+ * @param {object} user
+ * @param {string} skillId
+ * @param {{ characters?: object[] }} [context]
+ */
+export function applySkill(user, skillId, context = {}) {
+  const skill = getSkill(skillId);
+  if (!user || !skill) {
+    return { ok: false, reason: "unknown-skill" };
+  }
+
+  if (skill.effect.type === "staminaAllCharacters") {
+    const characters = context.characters;
+    if (!Array.isArray(characters) || !characters.length) {
+      return { ok: false, reason: "needs-characters" };
+    }
+    const amount = Number(skill.effect.amount) || 0;
+    const results = characters.map((character) => {
+      if (!character || typeof character.stamina !== "number") {
+        return { id: character?.id, restored: 0 };
+      }
+      const max =
+        typeof character.maxStamina === "number"
+          ? character.maxStamina
+          : character.stamina;
+      const before = character.stamina;
+      character.stamina = Math.min(max, before + amount);
+      return {
+        id: character.id,
+        restored: character.stamina - before,
+        stamina: character.stamina,
+        maxStamina: max,
+      };
+    });
+    return {
+      ok: true,
+      skillId: skill.id,
+      name: skill.name,
+      results,
+      totalRestored: results.reduce((sum, row) => sum + row.restored, 0),
+    };
+  }
+
+  return { ok: false, reason: "unsupported-effect" };
+}
+
 export function createCombatant(classId) {
   const cls = getCharacterClass(classId);
   if (!cls || !hasCombatStats(cls)) return null;
   const attackTypes = getAttackTypes(cls);
   const spellDefs = getClassSpells(cls);
+  const skillDefs = getClassSkills(cls);
   const attackMoves = Object.fromEntries(
     attackTypes
       .map((name) => [name, getAttackMove(name)])
@@ -588,6 +669,8 @@ export function createCombatant(classId) {
     defendType: cls.defendType,
     spells: spellDefs.map((s) => s.id),
     spellNames: spellDefs.map((s) => s.name),
+    skills: skillDefs.map((s) => s.id),
+    skillNames: skillDefs.map((s) => s.name),
     canCast: canCastSpells(cls),
     alive: true,
   };
@@ -601,6 +684,7 @@ export function formatCombatStats(cls) {
 
   const attackTypes = getAttackTypes(cls);
   const spellDefs = getClassSpells(cls);
+  const skillDefs = getClassSkills(cls);
   let spellLine;
   if (spellDefs.length) {
     const names = spellDefs.map((s) => s.name).join(", ");
@@ -617,6 +701,15 @@ export function formatCombatStats(cls) {
     } else {
       spellLine = `Spells: none (needs Intelligence ${MIN_INTELLIGENCE_TO_CAST}+ to cast)`;
     }
+  }
+
+  let skillLine = null;
+  if (skillDefs.length) {
+    const names = skillDefs.map((s) => s.name).join(", ");
+    const notes = skillDefs
+      .map((s) => `  · ${s.name}: ${s.description}`)
+      .join("\n");
+    skillLine = `Skills: ${names}\n${notes}`;
   }
 
   const intelligence = getIntelligence(cls);
@@ -637,5 +730,6 @@ export function formatCombatStats(cls) {
   ];
   if (attackNotes) lines.push(attackNotes);
   lines.push(spellLine);
+  if (skillLine) lines.push(skillLine);
   return lines.join("\n");
 }
