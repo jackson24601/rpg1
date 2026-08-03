@@ -1,88 +1,8 @@
-const CLASSES = [
-  {
-    id: "barbarian",
-    name: "Barbarian",
-    blurb: "Rage-powered melee fighter and durable tank.",
-    detail:
-      "Barbarian — Rage-powered melee fighter, tank with high damage resistance.",
-  },
-  {
-    id: "fighter",
-    name: "Fighter",
-    blurb: "Versatile warrior packed with combat maneuvers.",
-    detail:
-      "Fighter — Versatile warrior, lots of attacks and combat maneuvers.",
-  },
-  {
-    id: "paladin",
-    name: "Paladin",
-    blurb: "Holy warrior with healing and divine smite.",
-    detail:
-      "Paladin — Holy warrior with spellcasting and healing, plus divine smite damage.",
-  },
-  {
-    id: "ranger",
-    name: "Ranger",
-    blurb: "Archer-tracker hybrid with light magic.",
-    detail:
-      "Ranger — Archer/tracker hybrid, ranged combat with some spellcasting.",
-  },
-  {
-    id: "wizard",
-    name: "Wizard",
-    blurb: "Book-learned caster with vast spell variety.",
-    detail:
-      "Wizard — Book-learned spellcaster, wide spell variety, squishy but powerful.",
-  },
-  {
-    id: "sorcerer",
-    name: "Sorcerer",
-    blurb: "Innate magic with flexible casting.",
-    detail:
-      "Sorcerer — Innate spellcaster (magic in their blood), fewer spells but more flexibility.",
-  },
-  {
-    id: "cleric",
-    name: "Cleric",
-    blurb: "Divine healer with solid battlefield presence.",
-    detail: "Cleric — Divine spellcaster, healer, moderate combat ability.",
-  },
-  {
-    id: "druid",
-    name: "Druid",
-    blurb: "Nature magic, wildshape, and healing.",
-    detail:
-      "Druid — Nature spellcaster, can wildshape into animals, healer.",
-  },
-  {
-    id: "rogue",
-    name: "Rogue",
-    blurb: "Sneaky burst damage and skill mastery.",
-    detail:
-      "Rogue — Sneaky damage dealer, best at skills and non-magical tricks, high burst damage.",
-  },
-  {
-    id: "monk",
-    name: "Monk",
-    blurb: "Swift martial artist with deadly unarmed strikes.",
-    detail:
-      "Monk — Martial artist, fast movement, impressive unarmed combat.",
-  },
-  {
-    id: "bard",
-    name: "Bard",
-    blurb: "Charming buffer, skill monkey, and support caster.",
-    detail:
-      "Bard — Jack-of-all-trades spellcaster, skill monkey, buffer/debuffer with charm magic.",
-  },
-  {
-    id: "warlock",
-    name: "Warlock",
-    blurb: "Pact-bound blaster with unique invocations.",
-    detail:
-      "Warlock — Makes a pact with a powerful entity, unique invocation system, spell blasting.",
-  },
-];
+import {
+  CLASSES,
+  getCharacterClass,
+  formatCombatStats,
+} from "./characters.js";
 
 const MAX_PARTY = 3;
 const selectedIds = [];
@@ -94,7 +14,7 @@ const detailPanel = document.getElementById("detailPanel");
 const confirmBtn = document.getElementById("confirmParty");
 
 function getClass(id) {
-  return CLASSES.find((entry) => entry.id === id);
+  return getCharacterClass(id);
 }
 
 function renderSlots() {
@@ -159,6 +79,12 @@ function setDetail(text) {
   detailPanel.textContent = text;
 }
 
+function showClassDetail(id) {
+  const cls = getClass(id);
+  if (!cls) return;
+  setDetail(formatCombatStats(cls));
+}
+
 function toggleClass(id) {
   const existing = selectedIds.indexOf(id);
   if (existing !== -1) {
@@ -166,7 +92,7 @@ function toggleClass(id) {
     setDetail(`${getClass(id).name} left the party.`);
   } else if (selectedIds.length < MAX_PARTY) {
     selectedIds.push(id);
-    setDetail(getClass(id).detail);
+    showClassDetail(id);
   } else {
     setDetail("Your party is full. Deselect a member before choosing another.");
     return;
@@ -214,7 +140,7 @@ function buildGrid() {
     const card = event.target.closest(".class-card");
     if (!card) return;
     if (selectedIds.includes(card.dataset.id)) return;
-    setDetail(getClass(card.dataset.id).detail);
+    showClassDetail(card.dataset.id);
   });
 }
 
