@@ -25,7 +25,7 @@ export const SUCCESS_SCALE = 10;
  * @property {string} id
  * @property {string} name          button label in combat
  * @property {string} description
- * @property {{ type: string, amount?: number, multiplier?: number }} effect
+ * @property {{ type: string, amount?: number, multiplier?: number, turns?: number }} effect
  */
 
 /** @type {Record<string, SpellDef>} */
@@ -67,6 +67,20 @@ export const SPELLS = {
     name: "Hold Fast",
     description: "Chosen opponent cannot attack on their next turn.",
     effect: { type: "preventTargetAttackNextTurn" },
+  },
+  "healing-touch": {
+    id: "healing-touch",
+    name: "Healing Touch",
+    description:
+      "Restore 5 hit points to a chosen character. Cannot exceed maximum hit points.",
+    effect: { type: "healTarget", amount: 5 },
+  },
+  "divine-protection": {
+    id: "divine-protection",
+    name: "Divine Protection",
+    description:
+      "For the next two turns, the chosen character cannot receive damage.",
+    effect: { type: "preventTargetDamageTurns", turns: 2 },
   },
 };
 
@@ -181,6 +195,14 @@ export const CLASSES = [
     name: "Cleric",
     blurb: "Divine healer with solid battlefield presence.",
     detail: "Cleric — Divine spellcaster, healer, moderate combat ability.",
+    hitPoints: 40,
+    attack: 0,
+    defend: 4,
+    stamina: 4,
+    intelligence: 10,
+    attackTypes: ["Strike"],
+    defendType: "Dodge",
+    spells: ["healing-touch", "divine-protection"],
   },
   {
     id: "druid",
@@ -300,17 +322,29 @@ export function applySpell(caster, spellId, context = {}) {
     return { ok: false, reason: "intelligence-too-low" };
   }
 
-  if (spell.effect.type === "healSelf") {
-    const before = caster.hitPoints;
-    const max = caster.maxHitPoints;
+  if (spell.effect.type === "healSelf" || spell.effect.type === "healTarget") {
+    const target =
+      spell.effect.type === "healSelf" ? caster : context.target;
+    if (!target || typeof target.hitPoints !== "number") {
+      return {
+        ok: false,
+        reason: spell.effect.type === "healSelf" ? "unknown-spell" : "needs-target",
+      };
+    }
+    const before = target.hitPoints;
+    const max =
+      typeof target.maxHitPoints === "number"
+        ? target.maxHitPoints
+        : target.hitPoints;
     const amount = Number(spell.effect.amount) || 0;
-    caster.hitPoints = Math.min(max, before + amount);
+    target.hitPoints = Math.min(max, before + amount);
     return {
       ok: true,
       spellId: spell.id,
       name: spell.name,
-      healed: caster.hitPoints - before,
-      hitPoints: caster.hitPoints,
+      healed: target.hitPoints - before,
+      targetId: target.id,
+      hitPoints: target.hitPoints,
       maxHitPoints: max,
     };
   }
@@ -391,6 +425,22 @@ export function applySpell(caster, spellId, context = {}) {
       name: spell.name,
       targetId: target.id,
       cannotAttackNextTurn: true,
+    };
+  }
+
+  if (spell.effect.type === "preventTargetDamageTurns") {
+    const target = context.target;
+    if (!target) {
+      return { ok: false, reason: "needs-target" };
+    }
+    const turns = Number(spell.effect.turns) || 0;
+    target.damageImmuneTurns = Math.max(target.damageImmuneTurns || 0, turns);
+    return {
+      ok: true,
+      spellId: spell.id,
+      name: spell.name,
+      targetId: target.id,
+      damageImmuneTurns: target.damageImmuneTurns,
     };
   }
 
