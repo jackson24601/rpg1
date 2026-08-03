@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Battle — Dragon Quest</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&family=VT323&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="battle.css" />
+  </head>
+  <body class="battle-page">
+    <div class="battle-backdrop" aria-hidden="true"></div>
+
+    <main class="battle-shell">
+      <header class="battle-header rpg-window">
+        <h1 class="battle-title">Dragon Quest</h1>
+        <p class="battle-subtitle" id="battleSubtitle">Combat</p>
+      </header>
+
+      <section class="battlefield rpg-window" aria-label="Battlefield">
+        <div class="battlefield__stage" id="battlefield">
+          <div class="battle-sky" aria-hidden="true"></div>
+          <div class="battle-ground" aria-hidden="true"></div>
+          <div class="battle-side battle-side--enemies" id="enemySide"></div>
+          <div class="battle-side battle-side--party" id="partySide"></div>
+        </div>
+      </section>
+
+      <section class="battle-hud rpg-window">
+        <p class="battle-log" id="battleLog" aria-live="polite">Battle begins!</p>
+        <div class="battle-actor" id="actorPanel"></div>
+        <div class="battle-actions" id="actionMenu" role="group" aria-label="Combat actions"></div>
+        <p class="battle-prompt" id="battlePrompt"></p>
+        <div class="battle-end" id="endPanel" hidden>
+          <button type="button" class="battle-btn battle-btn--primary" id="endBtn">Continue</button>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="battle.js"></script>
+  </body>
+</html>

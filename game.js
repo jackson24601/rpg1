@@ -51,6 +51,13 @@ const miniEls = new Map();
 let enemies = [];
 /** Pending spawn timers for the current scene. */
 const spawnTimers = [];
+/** Prevent double-triggering an encounter while navigating away. */
+let encounterLocked = false;
+
+const BATTLE_KEY = "dragonQuestBattle";
+const OVERWORLD_KEY = "dragonQuestOverworld";
+/** Distance between sprite origins that counts as contact. */
+const ENCOUNTER_DISTANCE = 26;
 
 /** Held directions from keyboard / D-pad. */
 const held = {
@@ -246,6 +253,72 @@ function updateEnemies(dt) {
   if (!enemies.length) return;
   enemies = enemies.map((enemy) => chaseStep(enemy, spritePos, WALK_SPEED, dt));
   syncEnemyDom();
+  checkEncounterContact();
+}
+
+function checkEncounterContact() {
+  if (encounterLocked || isTransitioning || !enemies.length) return;
+
+  const partyCx = spritePos.x + SPRITE_W / 2;
+  const partyCy = spritePos.y + SPRITE_H / 2;
+
+  for (const enemy of enemies) {
+    const ex = enemy.x + SPRITE_W / 2;
+    const ey = enemy.y + SPRITE_H / 2;
+    if (Math.hypot(ex - partyCx, ey - partyCy) <= ENCOUNTER_DISTANCE) {
+      beginEncounter(enemy);
+      return;
+    }
+  }
+}
+
+function beginEncounter(enemy) {
+  encounterLocked = true;
+  clearSpawnTimers();
+  held.up = held.down = held.left = held.right = false;
+  setWalkingVisual(false);
+  setStatus(`A wild ${enemy.name} engages your party!`);
+
+  sessionStorage.setItem(
+    OVERWORLD_KEY,
+    JSON.stringify({
+      x: position.x,
+      y: position.y,
+      facing,
+      spritePos,
+    })
+  );
+  sessionStorage.setItem(
+    BATTLE_KEY,
+    JSON.stringify({
+      // Goblin troop size is rolled on a d6 when battle.html starts.
+      enemyType: enemy.type || "goblin",
+    })
+  );
+
+  window.setTimeout(() => {
+    window.location.href = "battle.html";
+  }, 450);
+}
+
+function restoreOverworldState() {
+  try {
+    const raw = sessionStorage.getItem(OVERWORLD_KEY);
+    if (!raw) return;
+    const saved = JSON.parse(raw);
+    if (Number.isFinite(saved.x) && Number.isFinite(saved.y)) {
+      position.x = saved.x;
+      position.y = saved.y;
+    }
+    if (saved.facing) facing = saved.facing;
+    if (saved.spritePos?.x != null && saved.spritePos?.y != null) {
+      spritePos = { ...saved.spritePos };
+    }
+    // Consumed after a battle return so a refresh doesn't soft-lock position forever.
+    sessionStorage.removeItem(OVERWORLD_KEY);
+  } catch {
+    // ignore corrupt save
+  }
 }
 
 function renderScene({ animateFrame = false } = {}) {
@@ -393,13 +466,14 @@ async function transitionScene(dx, dy) {
 
 function tick(ts) {
   rafId = requestAnimationFrame(tick);
-  if (isTransitioning) return;
+  if (isTransitioning || encounterLocked) return;
 
   if (!lastTs) lastTs = ts;
   const dt = Math.min(0.05, (ts - lastTs) / 1000);
   lastTs = ts;
 
   updateEnemies(dt);
+  if (encounterLocked) return;
 
   const { dx, dy } = currentDelta();
   if (!dx && !dy) {
@@ -419,6 +493,8 @@ function tick(ts) {
   const hitEdgeY = clamped.y !== nextY;
   spritePos = clamped;
   placeSpriteDom(spritePos.x, spritePos.y);
+  checkEncounterContact();
+  if (encounterLocked) return;
 
   const edgeDx = hitEdgeX ? dx : 0;
   const edgeDy = hitEdgeY ? dy : 0;
@@ -492,9 +568,11 @@ function bindControls() {
   });
 }
 
+restoreOverworldState();
 renderPartyStrip();
 buildMinimap();
 renderScene();
+placeSpriteDom(spritePos.x, spritePos.y);
 bindControls();
 rafId = requestAnimationFrame(tick);
 
