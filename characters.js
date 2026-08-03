@@ -270,6 +270,15 @@ export const CLASSES = [
     blurb: "Swift martial artist with deadly unarmed strikes.",
     detail:
       "Monk — Martial artist, fast movement, impressive unarmed combat.",
+    hitPoints: 70,
+    attack: 7,
+    defend: 8,
+    stamina: 10,
+    intelligence: 7,
+    attackTypes: ["Flying Fist"],
+    defendType: "Block",
+    // Intelligence qualifies for casting, but the Monk starts with no spells.
+    spells: [],
   },
   {
     id: "bard",
