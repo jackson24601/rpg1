@@ -291,8 +291,8 @@ function beginEncounter(enemy) {
   sessionStorage.setItem(
     BATTLE_KEY,
     JSON.stringify({
+      // Goblin troop size is rolled on a d6 when battle.html starts.
       enemyType: enemy.type || "goblin",
-      count: 1,
     })
   );
 

@@ -53,12 +53,30 @@ export function createCombatEnemy(typeId) {
   };
 }
 
+/** Roll a fair six-sided die (1–6). */
+export function rollD6() {
+  return 1 + Math.floor(Math.random() * 6);
+}
+
+/**
+ * Goblin encounters roll a d6 for troop size at combat start.
+ * Other enemy types use the provided count (default 1).
+ */
+export function encounterCountFor(enemyTypeId, explicitCount) {
+  if (enemyTypeId === "goblin") {
+    return rollD6();
+  }
+  const n = Number(explicitCount);
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : 1;
+}
+
 export function buildEncounter(enemyTypeId, count = 1) {
   const foes = [];
-  for (let i = 0; i < count; i += 1) {
+  const size = Math.max(1, Math.floor(count));
+  for (let i = 0; i < size; i += 1) {
     const foe = createCombatEnemy(enemyTypeId);
     if (foe) {
-      if (count > 1) foe.name = `${foe.name} ${i + 1}`;
+      if (size > 1) foe.name = `${foe.name} ${i + 1}`;
       foes.push(foe);
     }
   }

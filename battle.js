@@ -10,7 +10,7 @@ import {
   STAMINA_LOSS_PER_ROUND,
   createSummon,
 } from "./characters.js";
-import { buildEncounter } from "./combat-enemies.js";
+import { buildEncounter, encounterCountFor } from "./combat-enemies.js";
 
 const BATTLE_KEY = "dragonQuestBattle";
 const PARTY_KEY = "dragonQuestParty";
@@ -58,6 +58,8 @@ const ENEMY_SLOTS = [
   { left: "34%", top: "30%" },
   { left: "14%", top: "28%" },
   { left: "28%", top: "48%" },
+  { left: "40%", top: "42%" },
+  { left: "12%", top: "44%" },
 ];
 
 function loadBattlePayload() {
@@ -769,7 +771,8 @@ endBtn.addEventListener("click", () => {
 function init() {
   const payload = loadBattlePayload();
   const enemyType = payload?.enemyType || "goblin";
-  const count = payload?.count || 1;
+  // Goblins: troop size is a fresh d6 roll at the start of each combat.
+  const count = encounterCountFor(enemyType, payload?.count);
 
   party = buildPartyCombatants();
   enemies = buildEncounter(enemyType, count);
@@ -791,7 +794,11 @@ function init() {
     count > 1 ? `Battle — ${count} Goblins` : "Battle — Goblin";
 
   renderFighters();
-  setLog("Enemies draw near! Your party acts first.");
+  setLog(
+    count > 1
+      ? `${count} Goblins draw near! Your party acts first.`
+      : "A Goblin draws near! Your party acts first."
+  );
   beginCommandPhase();
 }
 
