@@ -11,13 +11,33 @@
  * - Intelligence: required to cast spells (MIN_INTELLIGENCE_TO_CAST+).
  * - attackTypes / defendType: labels for the action buttons on that
  *   character's turn (e.g. ["Slash", "Thrust"], "Parry").
- * - spells: optional spell labels offered on that character's turn.
+ * - spells: optional spell ids offered on that character's turn
+ *   (see SPELLS for names and effects).
  */
 
 export const STAMINA_LOSS_PER_ROUND = 0.5;
 export const MIN_INTELLIGENCE_TO_CAST = 7;
 /** Attack and Defend rolls succeed if random(1..SCALE) <= rating. */
 export const SUCCESS_SCALE = 10;
+
+/**
+ * @typedef {object} SpellDef
+ * @property {string} id
+ * @property {string} name          button label in combat
+ * @property {string} description
+ * @property {{ type: string, amount?: number }} effect
+ */
+
+/** @type {Record<string, SpellDef>} */
+export const SPELLS = {
+  "holy-restoration": {
+    id: "holy-restoration",
+    name: "Holy Restoration",
+    description:
+      "Restore 5 hit points to the caster. Cannot exceed maximum hit points.",
+    effect: { type: "healSelf", amount: 5 },
+  },
+};
 
 /**
  * @typedef {object} CharacterClass
@@ -32,7 +52,7 @@ export const SUCCESS_SCALE = 10;
  * @property {number} [intelligence]
  * @property {string[]} [attackTypes] combat attack button labels
  * @property {string} [defendType]    combat defend button label
- * @property {string[]} [spells]      spell button labels
+ * @property {string[]} [spells]      spell ids from SPELLS
  */
 
 /** @type {CharacterClass[]} */
@@ -73,6 +93,14 @@ export const CLASSES = [
     blurb: "Holy warrior with healing and divine smite.",
     detail:
       "Paladin — Holy warrior with spellcasting and healing, plus divine smite damage.",
+    hitPoints: 85,
+    attack: 7,
+    defend: 8,
+    stamina: 6,
+    intelligence: 7,
+    attackTypes: ["Thrust"],
+    defendType: "Parry",
+    spells: ["holy-restoration"],
   },
   {
     id: "ranger",
@@ -155,13 +183,21 @@ export function hasCombatStats(cls) {
   );
 }
 
+export function getSpell(spellId) {
+  return SPELLS[spellId] || null;
+}
+
+export function getClassSpells(cls) {
+  if (!cls || !Array.isArray(cls.spells)) return [];
+  return cls.spells.map(getSpell).filter(Boolean);
+}
+
 export function canCastSpells(cls) {
   return Boolean(
     cls &&
       typeof cls.intelligence === "number" &&
       cls.intelligence >= MIN_INTELLIGENCE_TO_CAST &&
-      Array.isArray(cls.spells) &&
-      cls.spells.length > 0
+      getClassSpells(cls).length > 0
   );
 }
 
@@ -172,26 +208,56 @@ export function successChance(rating) {
   return Math.min(1, Math.max(0, value / SUCCESS_SCALE));
 }
 
-/**
- * Fresh combatant state cloned from a class definition.
- * Used when battle starts — not yet wired into encounters.
- */
 export function getAttackTypes(cls) {
   if (!cls) return [];
   if (Array.isArray(cls.attackTypes) && cls.attackTypes.length) {
     return [...cls.attackTypes];
   }
-  // Legacy single attackType support
   if (typeof cls.attackType === "string" && cls.attackType) {
     return [cls.attackType];
   }
   return [];
 }
 
+/**
+ * Apply a known spell to a combatant. Returns a result describing the change.
+ * Battle UI is not wired yet — this encodes the mechanical effect.
+ */
+export function applySpell(combatant, spellId) {
+  const spell = getSpell(spellId);
+  if (!combatant || !spell) {
+    return { ok: false, reason: "unknown-spell" };
+  }
+  if (
+    typeof combatant.intelligence !== "number" ||
+    combatant.intelligence < MIN_INTELLIGENCE_TO_CAST
+  ) {
+    return { ok: false, reason: "intelligence-too-low" };
+  }
+
+  if (spell.effect.type === "healSelf") {
+    const before = combatant.hitPoints;
+    const max = combatant.maxHitPoints;
+    const amount = Number(spell.effect.amount) || 0;
+    combatant.hitPoints = Math.min(max, before + amount);
+    return {
+      ok: true,
+      spellId: spell.id,
+      name: spell.name,
+      healed: combatant.hitPoints - before,
+      hitPoints: combatant.hitPoints,
+      maxHitPoints: max,
+    };
+  }
+
+  return { ok: false, reason: "unsupported-effect" };
+}
+
 export function createCombatant(classId) {
   const cls = getCharacterClass(classId);
   if (!cls || !hasCombatStats(cls)) return null;
   const attackTypes = getAttackTypes(cls);
+  const spellDefs = getClassSpells(cls);
   return {
     id: cls.id,
     name: cls.name,
@@ -205,7 +271,8 @@ export function createCombatant(classId) {
     attackTypes,
     attackType: attackTypes[0] || null,
     defendType: cls.defendType,
-    spells: [...(cls.spells || [])],
+    spells: spellDefs.map((s) => s.id),
+    spellNames: spellDefs.map((s) => s.name),
     canCast: canCastSpells(cls),
     alive: true,
   };
@@ -218,12 +285,19 @@ export function formatCombatStats(cls) {
   }
 
   const attackTypes = getAttackTypes(cls);
-  const spellLine =
-    cls.spells && cls.spells.length
-      ? `Spells: ${cls.spells.join(", ")}`
-      : cls.intelligence >= MIN_INTELLIGENCE_TO_CAST
-        ? "Spells: none"
-        : `Spells: none (needs Intelligence ${MIN_INTELLIGENCE_TO_CAST}+ to cast)`;
+  const spellDefs = getClassSpells(cls);
+  let spellLine;
+  if (spellDefs.length) {
+    const names = spellDefs.map((s) => s.name).join(", ");
+    const notes = spellDefs
+      .map((s) => `  · ${s.name}: ${s.description}`)
+      .join("\n");
+    spellLine = `Spells: ${names}\n${notes}`;
+  } else if (cls.intelligence >= MIN_INTELLIGENCE_TO_CAST) {
+    spellLine = "Spells: none";
+  } else {
+    spellLine = `Spells: none (needs Intelligence ${MIN_INTELLIGENCE_TO_CAST}+ to cast)`;
+  }
 
   return [
     cls.detail,
