@@ -9,8 +9,8 @@
  *   Characters lose STAMINA_LOSS_PER_ROUND each combat round;
  *   spells may restore stamina.
  * - Intelligence: required to cast spells (MIN_INTELLIGENCE_TO_CAST+).
- * - attackType / defendType: labels for the action buttons on that
- *   character's turn (e.g. "Slash", "Parry").
+ * - attackTypes / defendType: labels for the action buttons on that
+ *   character's turn (e.g. ["Slash", "Thrust"], "Parry").
  * - spells: optional spell labels offered on that character's turn.
  */
 
@@ -30,9 +30,9 @@ export const SUCCESS_SCALE = 10;
  * @property {number} [defend]      0–10 defense chance rating
  * @property {number} [stamina]
  * @property {number} [intelligence]
- * @property {string} [attackType]  combat button label
- * @property {string} [defendType]  combat button label
- * @property {string[]} [spells]    spell button labels
+ * @property {string[]} [attackTypes] combat attack button labels
+ * @property {string} [defendType]    combat defend button label
+ * @property {string[]} [spells]      spell button labels
  */
 
 /** @type {CharacterClass[]} */
@@ -48,7 +48,7 @@ export const CLASSES = [
     defend: 5,
     stamina: 8,
     intelligence: 1,
-    attackType: "Slash",
+    attackTypes: ["Slash"],
     defendType: "Parry",
     spells: [],
   },
@@ -58,6 +58,14 @@ export const CLASSES = [
     blurb: "Versatile warrior packed with combat maneuvers.",
     detail:
       "Fighter — Versatile warrior, lots of attacks and combat maneuvers.",
+    hitPoints: 85,
+    attack: 7,
+    defend: 8,
+    stamina: 6,
+    intelligence: 4,
+    attackTypes: ["Slash", "Thrust"],
+    defendType: "Parry",
+    spells: [],
   },
   {
     id: "paladin",
@@ -168,9 +176,22 @@ export function successChance(rating) {
  * Fresh combatant state cloned from a class definition.
  * Used when battle starts — not yet wired into encounters.
  */
+export function getAttackTypes(cls) {
+  if (!cls) return [];
+  if (Array.isArray(cls.attackTypes) && cls.attackTypes.length) {
+    return [...cls.attackTypes];
+  }
+  // Legacy single attackType support
+  if (typeof cls.attackType === "string" && cls.attackType) {
+    return [cls.attackType];
+  }
+  return [];
+}
+
 export function createCombatant(classId) {
   const cls = getCharacterClass(classId);
   if (!cls || !hasCombatStats(cls)) return null;
+  const attackTypes = getAttackTypes(cls);
   return {
     id: cls.id,
     name: cls.name,
@@ -181,7 +202,8 @@ export function createCombatant(classId) {
     maxStamina: cls.stamina,
     stamina: cls.stamina,
     intelligence: cls.intelligence,
-    attackType: cls.attackType,
+    attackTypes,
+    attackType: attackTypes[0] || null,
     defendType: cls.defendType,
     spells: [...(cls.spells || [])],
     canCast: canCastSpells(cls),
@@ -195,6 +217,7 @@ export function formatCombatStats(cls) {
     return `${cls.detail}\n\nCombat stats coming soon.`;
   }
 
+  const attackTypes = getAttackTypes(cls);
   const spellLine =
     cls.spells && cls.spells.length
       ? `Spells: ${cls.spells.join(", ")}`
@@ -207,7 +230,7 @@ export function formatCombatStats(cls) {
     "",
     `HP ${cls.hitPoints}  ·  Attack ${cls.attack}/${SUCCESS_SCALE}  ·  Defend ${cls.defend}/${SUCCESS_SCALE}`,
     `Stamina ${cls.stamina}  ·  Intelligence ${cls.intelligence}`,
-    `Attack: ${cls.attackType}  ·  Defend: ${cls.defendType}`,
+    `Attack: ${attackTypes.join(", ") || "—"}  ·  Defend: ${cls.defendType || "—"}`,
     spellLine,
   ].join("\n");
 }
