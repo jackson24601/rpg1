@@ -18,9 +18,20 @@ import {
   entryPosForDelta,
   spriteTransform,
 } from "./scene-render.js";
+import {
+  canSpawnGoblins,
+  createGoblin,
+  pickSpawnAwayFrom,
+  chaseStep,
+  EARLY_SPAWN_CHANCE,
+  EARLY_SPAWN_WINDOW_MS,
+  FORCED_SPAWN_MS,
+} from "./enemies.js";
 
 const cells = buildMap();
 const sceneFrame = document.getElementById("sceneFrame");
+const sceneArt = document.getElementById("sceneArt");
+const entityLayer = document.getElementById("entityLayer");
 const sceneCaption = document.getElementById("sceneCaption");
 const minimap = document.getElementById("minimap");
 const locationLabel = document.getElementById("locationLabel");
@@ -35,6 +46,11 @@ let isTransitioning = false;
 let rafId = 0;
 let lastTs = 0;
 const miniEls = new Map();
+
+/** Active enemies in the current scene. */
+let enemies = [];
+/** Pending spawn timers for the current scene. */
+const spawnTimers = [];
 
 /** Held directions from keyboard / D-pad. */
 const held = {
@@ -130,8 +146,6 @@ function currentDelta() {
   if (held.right) dx += 1;
   if (held.up) dy -= 1;
   if (held.down) dy += 1;
-  // Prefer the most recently implied facing axis when both pressed;
-  // cancel opposites.
   if (held.left && held.right) dx = 0;
   if (held.up && held.down) dy = 0;
   return { dx, dy };
@@ -148,6 +162,92 @@ function updateHudLabels(cell) {
   miniEls.get(`${position.x},${position.y}`)?.classList.add("is-current");
 }
 
+function clearSpawnTimers() {
+  while (spawnTimers.length) {
+    clearTimeout(spawnTimers.pop());
+  }
+}
+
+function clearEnemies() {
+  clearSpawnTimers();
+  enemies = [];
+  entityLayer.innerHTML = "";
+}
+
+function syncEnemyDom() {
+  const existing = new Map(
+    [...entityLayer.querySelectorAll(".enemy-sprite")].map((el) => [el.dataset.enemyId, el])
+  );
+
+  const keep = new Set(enemies.map((e) => e.id));
+  existing.forEach((el, id) => {
+    if (!keep.has(id)) el.remove();
+  });
+
+  enemies.forEach((enemy) => {
+    let el = existing.get(enemy.id);
+    if (!el) {
+      el = document.createElement("div");
+      el.className = "enemy-sprite";
+      el.dataset.enemyId = enemy.id;
+      el.dataset.enemyType = enemy.type;
+      el.innerHTML = `<img src="${enemy.src}" alt="${enemy.name}" width="40" height="44" draggable="false" />`;
+      entityLayer.appendChild(el);
+    }
+    el.style.left = `${(enemy.x / SCENE_W) * 100}%`;
+    el.style.top = `${(enemy.y / SCENE_H) * 100}%`;
+    el.classList.toggle("is-flip", enemy.facing === "left");
+  });
+}
+
+function spawnGoblin() {
+  const cell = cellAt(cells, position.x, position.y);
+  if (!canSpawnGoblins(cell)) return;
+  if (enemies.some((e) => e.type === "goblin")) return;
+
+  const pos = pickSpawnAwayFrom(spritePos);
+  const toward = facingFromDelta(spritePos.x - pos.x, spritePos.y - pos.y);
+  enemies.push(createGoblin(pos.x, pos.y, toward));
+  syncEnemyDom();
+  setStatus("A Goblin appears!");
+}
+
+function scheduleSceneSpawns(cell) {
+  clearSpawnTimers();
+  if (!canSpawnGoblins(cell)) return;
+
+  const params = new URLSearchParams(window.location.search);
+  const forceEarly =
+    params.get("forceEnemy") === "goblin" ||
+    sessionStorage.getItem("dragonQuestForceGoblin") === "1";
+
+  // 50% chance a Goblin shows up within the first second.
+  if (forceEarly || Math.random() < EARLY_SPAWN_CHANCE) {
+    const delay = forceEarly ? 200 : Math.random() * EARLY_SPAWN_WINDOW_MS;
+    spawnTimers.push(setTimeout(spawnGoblin, delay));
+  }
+
+  // After 30s in this scene with no Goblin, one appears for sure.
+  spawnTimers.push(
+    setTimeout(() => {
+      if (!enemies.some((e) => e.type === "goblin")) {
+        spawnGoblin();
+      }
+    }, FORCED_SPAWN_MS)
+  );
+}
+
+function onSceneReady(cell) {
+  clearEnemies();
+  scheduleSceneSpawns(cell);
+}
+
+function updateEnemies(dt) {
+  if (!enemies.length) return;
+  enemies = enemies.map((enemy) => chaseStep(enemy, spritePos, WALK_SPEED, dt));
+  syncEnemyDom();
+}
+
 function renderScene({ animateFrame = false } = {}) {
   const cell = cellAt(cells, position.x, position.y);
   const leader = getLeader();
@@ -159,7 +259,7 @@ function renderScene({ animateFrame = false } = {}) {
     sceneFrame.classList.add("is-moving");
   }
 
-  sceneFrame.innerHTML = renderSceneSvg(
+  sceneArt.innerHTML = renderSceneSvg(
     cells,
     cell,
     leaderId,
@@ -167,10 +267,11 @@ function renderScene({ animateFrame = false } = {}) {
     spritePos
   );
   updateHudLabels(cell);
+  syncEnemyDom();
 }
 
 function placeSpriteDom(x, y) {
-  const node = sceneFrame.querySelector('[data-sprite="leader"]');
+  const node = sceneArt.querySelector('[data-sprite="leader"]');
   if (!node) return;
   node.setAttribute("transform", spriteTransform(facing, x, y));
 }
@@ -246,6 +347,7 @@ async function transitionScene(dx, dy) {
   }
 
   isTransitioning = true;
+  clearEnemies();
   setWalkingVisual(true);
 
   const leader = getLeader();
@@ -267,7 +369,6 @@ async function transitionScene(dx, dy) {
     await new Promise((r) => setTimeout(r, ENTRY_HOLD_MS));
   }
 
-  // Step a little into the scene from the entry edge, then free roam resumes
   const inward = clampToScene(
     spritePos.x + dx * 28,
     spritePos.y + dy * 20
@@ -283,6 +384,7 @@ async function transitionScene(dx, dy) {
   isTransitioning = false;
   setWalkingVisual(anyHeld());
   lastTs = 0;
+  onSceneReady(target);
 }
 
 function tick(ts) {
@@ -292,6 +394,8 @@ function tick(ts) {
   if (!lastTs) lastTs = ts;
   const dt = Math.min(0.05, (ts - lastTs) / 1000);
   lastTs = ts;
+
+  updateEnemies(dt);
 
   const { dx, dy } = currentDelta();
   if (!dx && !dy) {
@@ -312,12 +416,10 @@ function tick(ts) {
   spritePos = clamped;
   placeSpriteDom(spritePos.x, spritePos.y);
 
-  // Cross into the next scene when pressing into an edge
   const edgeDx = hitEdgeX ? dx : 0;
   const edgeDy = hitEdgeY ? dy : 0;
   if (!edgeDx && !edgeDy) return;
 
-  // If both edges, prefer horizontal
   const tdx = edgeDx || 0;
   const tdy = edgeDx ? 0 : edgeDy;
   if ((tdx || tdy) && atEdge(tdx, tdy)) {
@@ -359,7 +461,6 @@ function bindControls() {
     btn.addEventListener("pointerup", release);
     btn.addEventListener("pointerleave", release);
     btn.addEventListener("pointercancel", release);
-    // Prevent click-focus stealing / synthetic clicks after hold
     btn.addEventListener("click", (event) => event.preventDefault());
   });
 
@@ -393,6 +494,9 @@ renderScene();
 bindControls();
 rafId = requestAnimationFrame(tick);
 
+const startCell = cellAt(cells, position.x, position.y);
+onSceneReady(startCell);
+
 const leader = getLeader();
 setStatus(
   leader
@@ -402,8 +506,6 @@ setStatus(
 
 void ROWS;
 void COLS;
-void SCENE_W;
-void SCENE_H;
 void SPRITE_W;
 void SPRITE_H;
 void rafId;
