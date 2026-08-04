@@ -10,7 +10,11 @@ import {
   STAMINA_LOSS_PER_ROUND,
   createSummon,
 } from "./characters.js";
-import { buildEncounter, encounterCountFor } from "./combat-enemies.js";
+import {
+  buildEncounter,
+  encounterCountFor,
+  pickLowestHpTarget,
+} from "./combat-enemies.js";
 import { addGold, roll2d6 } from "./inventory.js";
 import { bindInventoryButton } from "./inventory-ui.js";
 
@@ -248,6 +252,7 @@ function makeFighterEl(unit, slot, side) {
   el.className = "battle-fighter";
   el.dataset.instanceId = unit.instanceId;
   el.dataset.side = side;
+  if (unit.id) el.dataset.unitId = unit.id;
   el.style.left = slot.left;
   el.style.top = slot.top;
   el.setAttribute("aria-label", unit.name);
@@ -573,7 +578,7 @@ async function resolveRound() {
     }
   }
 
-  // Enemy turn — always attack for now
+  // Enemy turn — each living foe acts (Goblins/Orcs always attack).
   phase = "enemy";
   armPendingBattleBuffs();
   for (const foe of enemies) {
@@ -586,7 +591,11 @@ async function resolveRound() {
     }
     const targets = alive(party);
     if (!targets.length) break;
-    const target = targets[Math.floor(Math.random() * targets.length)];
+    const target =
+      foe.ai === "alwaysAttackLowestHp"
+        ? pickLowestHpTarget(targets)
+        : targets[Math.floor(Math.random() * targets.length)];
+    if (!target) break;
     await resolveAttackAction(
       foe,
       { kind: "attack", move: foe.attackType || "Club", targetId: target.instanceId },
@@ -710,7 +719,14 @@ async function resolveAttackAction(actor, action, side) {
     return;
   }
 
-  let damage = resolveAttackDamage(move, true);
+  const baseDamage =
+    side === "enemy" && typeof actor.attackDamage === "number"
+      ? actor.attackDamage
+      : undefined;
+  let damage =
+    baseDamage != null
+      ? resolveAttackDamage(move, true, baseDamage)
+      : resolveAttackDamage(move, true);
   if (side === "enemy" && battleState.activeEnemyDamageMultiplier != null) {
     damage *= battleState.activeEnemyDamageMultiplier;
   }
@@ -829,7 +845,12 @@ async function endBattle(result) {
     savePartyCombatState(party);
     const goldRoll = roll2d6();
     const { inventory } = addGold(goldRoll);
-    setLog("The Goblins drop gold! You pick it up.");
+    const foeId = enemies[0]?.id || "goblin";
+    const dropLine =
+      foeId === "orc"
+        ? "The Orcs drop gold! You pick it up."
+        : "The Goblins drop gold! You pick it up.";
+    setLog(dropLine);
     setPrompt(`Gained ${goldRoll} gold. Total: ${inventory.gold}.`);
     battleSubtitle.textContent = "Victory";
     endBtn.textContent = "Return to World";
@@ -887,14 +908,15 @@ function init() {
     return;
   }
 
-  battleSubtitle.textContent =
-    count > 1 ? `Battle — ${count} Goblins` : "Battle — Goblin";
+  const plural =
+    enemyType === "orc" ? (count > 1 ? "Orcs" : "Orc") : count > 1 ? "Goblins" : "Goblin";
+  battleSubtitle.textContent = `Battle — ${count > 1 ? `${count} ${plural}` : plural}`;
 
   renderFighters();
   setLog(
     count > 1
-      ? `${count} Goblins draw near! Your party acts first.`
-      : "A Goblin draws near! Your party acts first."
+      ? `${count} ${plural} draw near! Your party acts first.`
+      : `A ${plural} draws near! Your party acts first.`
   );
   beginCommandPhase();
 }

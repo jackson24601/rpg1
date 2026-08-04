@@ -231,6 +231,15 @@ body.game-page {
   transform: scaleX(-1);
 }
 
+.enemy-sprite[data-enemy-type="orc"] {
+  width: calc(52 / 320 * 100%);
+  height: calc(56 / 224 * 100%);
+}
+
+.enemy-sprite[data-enemy-type="orc"].is-flip {
+  transform: scaleX(-1);
+}
+
 .scene-frame.is-walking .enemy-sprite {
   animation: party-walk 0.28s steps(2, end) infinite;
 }
