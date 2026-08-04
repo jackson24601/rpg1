@@ -3,6 +3,7 @@ import {
   getCharacterClass,
   formatCombatStats,
 } from "./characters.js";
+import { clearPartyCombatState } from "./party-state.js";
 
 const MAX_PARTY = 3;
 const selectedIds = [];
@@ -154,7 +155,7 @@ confirmBtn.addEventListener("click", () => {
 
   sessionStorage.setItem("dragonQuestParty", JSON.stringify(party));
   // New party starts at full vitals — drop any leftover combat HP/stamina.
-  sessionStorage.removeItem("dragonQuestPartyState");
+  clearPartyCombatState();
   // Fresh adventure inventory.
   sessionStorage.removeItem("dragonQuestInventory");
   setDetail(

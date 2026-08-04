@@ -17,11 +17,15 @@ import {
 } from "./combat-enemies.js";
 import { addGold, roll2d6 } from "./inventory.js";
 import { bindInventoryButton } from "./inventory-ui.js";
+import {
+  loadPartyCombatState,
+  savePartyCombatState,
+  clearPartyCombatState,
+  resetStaminaRegenClock,
+} from "./party-state.js";
 
 const BATTLE_KEY = "dragonQuestBattle";
 const PARTY_KEY = "dragonQuestParty";
-/** Persists HP/stamina between battles for the current party. */
-const PARTY_STATE_KEY = "dragonQuestPartyState";
 
 const battleSubtitle = document.getElementById("battleSubtitle");
 const enemySide = document.getElementById("enemySide");
@@ -89,35 +93,6 @@ function loadPartyIds() {
   } catch {
     return [];
   }
-}
-
-function loadPartyCombatState() {
-  try {
-    const raw = sessionStorage.getItem(PARTY_STATE_KEY);
-    if (!raw) return {};
-    const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === "object" ? parsed : {};
-  } catch {
-    return {};
-  }
-}
-
-/** Save current party HP/stamina so the next battle resumes from these values. */
-function savePartyCombatState(heroes) {
-  const state = {};
-  heroes.forEach((hero) => {
-    if (!hero?.id) return;
-    state[hero.id] = {
-      hitPoints: Math.max(0, Number(hero.hitPoints) || 0),
-      stamina:
-        hero.stamina == null ? null : Math.max(0, Number(hero.stamina) || 0),
-    };
-  });
-  sessionStorage.setItem(PARTY_STATE_KEY, JSON.stringify(state));
-}
-
-function clearPartyCombatState() {
-  sessionStorage.removeItem(PARTY_STATE_KEY);
 }
 
 function applyPersistedVitals(combatant, saved) {
@@ -910,6 +885,8 @@ endBtn.addEventListener("click", () => {
 
   if (outcome === "win") {
     savePartyCombatState(party);
+    // Overworld stamina regen starts after combat — don't credit battle time.
+    resetStaminaRegenClock();
     sessionStorage.removeItem(BATTLE_KEY);
     window.location.href = "game.html";
     return;
