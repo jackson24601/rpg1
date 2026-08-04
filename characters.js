@@ -7,7 +7,9 @@
  *   (10 = guaranteed, 7 = 70%, etc.).
  * - Stamina: at 0 the character skips their next turn.
  *   Characters lose STAMINA_LOSS_PER_ROUND each combat round;
- *   spells may restore stamina.
+ *   spells may restore stamina. Outside combat, every
+ *   STAMINA_REGEN_INTERVAL_MS each party member regains
+ *   STAMINA_REGEN_AMOUNT (never above their maximum).
  * - Intelligence: required to cast spells (MIN_INTELLIGENCE_TO_CAST+).
  * - Successful weapon/melee attacks deal BASE_ATTACK_DAMAGE hit points
  *   (initially 1). Attack-move multipliers (e.g. Double Strike) apply on top.
@@ -21,6 +23,10 @@
  */
 
 export const STAMINA_LOSS_PER_ROUND = 0.5;
+/** Stamina restored to each party member per overworld regen tick. */
+export const STAMINA_REGEN_AMOUNT = 0.5;
+/** Milliseconds between overworld stamina regen ticks (after leaving combat). */
+export const STAMINA_REGEN_INTERVAL_MS = 10_000;
 export const MIN_INTELLIGENCE_TO_CAST = 7;
 /** Attack and Defend rolls succeed if random(1..SCALE) <= rating. */
 export const SUCCESS_SCALE = 10;

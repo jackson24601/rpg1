@@ -32,6 +32,11 @@ import {
   ORC_SPAWN_CHANCE,
 } from "./enemies.js";
 import { bindInventoryButton } from "./inventory-ui.js";
+import { STAMINA_REGEN_INTERVAL_MS } from "./characters.js";
+import {
+  applyOverworldStaminaRegen,
+  resetStaminaRegenClock,
+} from "./party-state.js";
 
 const cells = buildMap();
 const sceneFrame = document.getElementById("sceneFrame");
@@ -310,6 +315,8 @@ function beginEncounter(enemy) {
   held.up = held.down = held.left = held.right = false;
   setWalkingVisual(false);
   setStatus(`A wild ${enemy.name} engages your party!`);
+  // Pause overworld regen while in combat (clock resumes on return).
+  resetStaminaRegenClock();
 
   sessionStorage.setItem(
     OVERWORLD_KEY,
@@ -331,6 +338,24 @@ function beginEncounter(enemy) {
   window.setTimeout(() => {
     window.location.href = "battle.html";
   }, 450);
+}
+
+/** Outside combat: +0.5 stamina per hero every 10s, capped at class max. */
+function tickStaminaRegen() {
+  if (encounterLocked) return;
+  const party = loadParty();
+  if (!party.length) return;
+  applyOverworldStaminaRegen(party);
+}
+
+function startStaminaRegen() {
+  // Establish the regen clock when entering the overworld (e.g. after battle).
+  resetStaminaRegenClock();
+  // Poll often enough to apply catch-up if the tab was backgrounded.
+  window.setInterval(tickStaminaRegen, Math.min(1000, STAMINA_REGEN_INTERVAL_MS));
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") tickStaminaRegen();
+  });
 }
 
 function restoreOverworldState() {
@@ -607,6 +632,7 @@ renderScene();
 placeSpriteDom(spritePos.x, spritePos.y);
 bindControls();
 bindInventoryButton("#inventoryBtn");
+startStaminaRegen();
 rafId = requestAnimationFrame(tick);
 
 const startCell = cellAt(cells, position.x, position.y);
