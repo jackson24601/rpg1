@@ -349,8 +349,10 @@ function tickStaminaRegen() {
 }
 
 function startStaminaRegen() {
-  // Establish the regen clock when entering the overworld (e.g. after battle).
-  resetStaminaRegenClock();
+  // Do not reset the clock here — battle / encounter code already anchors it
+  // when leaving or entering combat. On a mid-overworld refresh, pending ticks
+  // should still apply (capped at each class max).
+  tickStaminaRegen();
   // Poll often enough to apply catch-up if the tab was backgrounded.
   window.setInterval(tickStaminaRegen, Math.min(1000, STAMINA_REGEN_INTERVAL_MS));
   document.addEventListener("visibilitychange", () => {
