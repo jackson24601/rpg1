@@ -5,6 +5,8 @@ import { WALK_BOUNDS, SPRITE_W, SPRITE_H, SCENE_W, SCENE_H } from "./scene-rende
 
 /** Terrains where Goblins may appear. */
 export const GOBLIN_TERRAINS = new Set([TERRAIN.forest, TERRAIN.meadow]);
+/** Terrains where Orcs may appear. */
+export const ORC_TERRAINS = new Set([TERRAIN.forest]);
 
 export const ENEMY_TYPES = {
   goblin: {
@@ -12,6 +14,12 @@ export const ENEMY_TYPES = {
     name: "Goblin",
     src: "assets/enemies/goblin.png",
     /** Matches party walk speed (set by game). */
+    speed: null,
+  },
+  orc: {
+    id: "orc",
+    name: "Orc",
+    src: "assets/enemies/orc.png",
     speed: null,
   },
 };
@@ -23,10 +31,18 @@ export const EARLY_SPAWN_WINDOW_MS = 1000;
 /** If still alone this long, a Goblin is guaranteed (ms). */
 export const FORCED_SPAWN_MS = 30_000;
 
+/** Orcs: after this delay, 50% chance one appears and chases the party. */
+export const ORC_SPAWN_DELAY_MS = 2000;
+export const ORC_SPAWN_CHANCE = 0.5;
+
 let nextEnemyId = 1;
 
 export function canSpawnGoblins(cell) {
   return Boolean(cell && !cell.special && GOBLIN_TERRAINS.has(cell.terrain));
+}
+
+export function canSpawnOrcs(cell) {
+  return Boolean(cell && !cell.special && ORC_TERRAINS.has(cell.terrain));
 }
 
 export function createGoblin(x, y, facing = "down") {
@@ -35,6 +51,18 @@ export function createGoblin(x, y, facing = "down") {
     type: "goblin",
     name: ENEMY_TYPES.goblin.name,
     src: ENEMY_TYPES.goblin.src,
+    x,
+    y,
+    facing,
+  };
+}
+
+export function createOrc(x, y, facing = "down") {
+  return {
+    id: `enemy-${nextEnemyId++}`,
+    type: "orc",
+    name: ENEMY_TYPES.orc.name,
+    src: ENEMY_TYPES.orc.src,
     x,
     y,
     facing,

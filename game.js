@@ -20,12 +20,16 @@ import {
 } from "./scene-render.js";
 import {
   canSpawnGoblins,
+  canSpawnOrcs,
   createGoblin,
+  createOrc,
   pickSpawnAwayFrom,
   chaseStep,
   EARLY_SPAWN_CHANCE,
   EARLY_SPAWN_WINDOW_MS,
   FORCED_SPAWN_MS,
+  ORC_SPAWN_DELAY_MS,
+  ORC_SPAWN_CHANCE,
 } from "./enemies.js";
 import { bindInventoryButton } from "./inventory-ui.js";
 
@@ -220,29 +224,56 @@ function spawnGoblin() {
   setStatus("A Goblin appears!");
 }
 
+function spawnOrc() {
+  const cell = cellAt(cells, position.x, position.y);
+  if (!canSpawnOrcs(cell)) return;
+  if (enemies.some((e) => e.type === "orc")) return;
+
+  const pos = pickSpawnAwayFrom(spritePos);
+  const toward = facingFromDelta(spritePos.x - pos.x, spritePos.y - pos.y);
+  enemies.push(createOrc(pos.x, pos.y, toward));
+  syncEnemyDom();
+  setStatus("An Orc appears!");
+}
+
 function scheduleSceneSpawns(cell) {
   clearSpawnTimers();
-  if (!canSpawnGoblins(cell)) return;
-
   const params = new URLSearchParams(window.location.search);
-  const forceEarly =
-    params.get("forceEnemy") === "goblin" ||
+  const forceEnemy = params.get("forceEnemy");
+  const forceGoblin =
+    forceEnemy === "goblin" ||
     sessionStorage.getItem("dragonQuestForceGoblin") === "1";
+  const forceOrc =
+    forceEnemy === "orc" ||
+    sessionStorage.getItem("dragonQuestForceOrc") === "1";
 
-  // 50% chance a Goblin shows up within the first second.
-  if (forceEarly || Math.random() < EARLY_SPAWN_CHANCE) {
-    const delay = forceEarly ? 200 : Math.random() * EARLY_SPAWN_WINDOW_MS;
-    spawnTimers.push(setTimeout(spawnGoblin, delay));
+  if (canSpawnGoblins(cell)) {
+    // 50% chance a Goblin shows up within the first second.
+    if (forceGoblin || Math.random() < EARLY_SPAWN_CHANCE) {
+      const delay = forceGoblin ? 200 : Math.random() * EARLY_SPAWN_WINDOW_MS;
+      spawnTimers.push(setTimeout(spawnGoblin, delay));
+    }
+
+    // After 30s in this scene with no Goblin, one appears for sure.
+    spawnTimers.push(
+      setTimeout(() => {
+        if (!enemies.some((e) => e.type === "goblin")) {
+          spawnGoblin();
+        }
+      }, FORCED_SPAWN_MS)
+    );
   }
 
-  // After 30s in this scene with no Goblin, one appears for sure.
-  spawnTimers.push(
-    setTimeout(() => {
-      if (!enemies.some((e) => e.type === "goblin")) {
-        spawnGoblin();
-      }
-    }, FORCED_SPAWN_MS)
-  );
+  if (canSpawnOrcs(cell)) {
+    // After 2 seconds, 50% chance an Orc appears and chases the party.
+    spawnTimers.push(
+      setTimeout(() => {
+        if (forceOrc || Math.random() < ORC_SPAWN_CHANCE) {
+          spawnOrc();
+        }
+      }, forceOrc ? 200 : ORC_SPAWN_DELAY_MS)
+    );
+  }
 }
 
 function onSceneReady(cell) {
@@ -292,7 +323,7 @@ function beginEncounter(enemy) {
   sessionStorage.setItem(
     BATTLE_KEY,
     JSON.stringify({
-      // Goblin troop size is rolled on a d6 when battle.html starts.
+      // Troop size is rolled when battle.html starts (goblin d6, orc 1–3).
       enemyType: enemy.type || "goblin",
     })
   );

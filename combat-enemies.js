@@ -9,7 +9,10 @@ export const COMBAT_ENEMIES = {
     name: "Goblin",
     src: "assets/enemies/goblin.png",
     hitPoints: 5,
+    /** Attack rating out of 10 (hit chance). */
     attack: 5,
+    /** Damage dealt on a successful hit. Defaults to 1 if omitted. */
+    attackDamage: 1,
     defend: null,
     stamina: null,
     intelligence: null,
@@ -17,8 +20,25 @@ export const COMBAT_ENEMIES = {
     defendType: null,
     spells: [],
     skills: [],
-    /** Placeholder AI — always attack for now. */
     ai: "alwaysAttack",
+  },
+  orc: {
+    id: "orc",
+    name: "Orc",
+    src: "assets/enemies/orc.png",
+    hitPoints: 10,
+    /** 75% chance to hit. */
+    attack: 7.5,
+    attackDamage: 2,
+    defend: null,
+    stamina: null,
+    intelligence: null,
+    attackTypes: ["Slash"],
+    defendType: null,
+    spells: [],
+    skills: [],
+    /** Always attack the living party member with the lowest HP. */
+    ai: "alwaysAttackLowestHp",
   },
 };
 
@@ -36,6 +56,7 @@ export function createCombatEnemy(typeId) {
     maxHitPoints: template.hitPoints,
     hitPoints: template.hitPoints,
     attack: template.attack,
+    attackDamage: template.attackDamage ?? 1,
     defend: template.defend,
     maxStamina: template.stamina,
     stamina: template.stamina,
@@ -58,13 +79,23 @@ export function rollD6() {
   return 1 + Math.floor(Math.random() * 6);
 }
 
+/** Random integer from min to max inclusive. */
+export function rollRange(min, max) {
+  const lo = Math.floor(min);
+  const hi = Math.floor(max);
+  return lo + Math.floor(Math.random() * (hi - lo + 1));
+}
+
 /**
- * Goblin encounters roll a d6 for troop size at combat start.
- * Other enemy types use the provided count (default 1).
+ * Troop size at combat start.
+ * Goblins: d6 (1–6). Orcs: 1–3. Others: explicit count or 1.
  */
 export function encounterCountFor(enemyTypeId, explicitCount) {
   if (enemyTypeId === "goblin") {
     return rollD6();
+  }
+  if (enemyTypeId === "orc") {
+    return rollRange(1, 3);
   }
   const n = Number(explicitCount);
   return Number.isFinite(n) && n > 0 ? Math.floor(n) : 1;
@@ -81,4 +112,11 @@ export function buildEncounter(enemyTypeId, count = 1) {
     }
   }
   return foes;
+}
+
+/** Pick the living target with the lowest hit points (ties → first). */
+export function pickLowestHpTarget(targets) {
+  const living = (targets || []).filter((t) => t && t.alive && t.hitPoints > 0);
+  if (!living.length) return null;
+  return living.reduce((best, t) => (t.hitPoints < best.hitPoints ? t : best));
 }
