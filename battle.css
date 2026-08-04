@@ -148,6 +148,10 @@ body.battle-page {
   pointer-events: none;
 }
 
+.battle-side--party .battle-fighter {
+  z-index: 3;
+}
+
 .battle-fighter {
   appearance: none;
   -webkit-appearance: none;
@@ -240,6 +244,16 @@ body.battle-page {
 .battle-fighter.is-dead {
   opacity: 0.35;
   filter: grayscale(0.8);
+}
+
+.battle-fighter.is-exhausted {
+  opacity: 0.7;
+  filter: saturate(0.55);
+}
+
+.battle-fighter.is-exhausted .battle-fighter__label::after {
+  content: " (tired)";
+  color: var(--muted);
 }
 
 .battle-fighter.is-active {
