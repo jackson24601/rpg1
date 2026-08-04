@@ -37,6 +37,11 @@ import {
   applyOverworldStaminaRegen,
   resetStaminaRegenClock,
 } from "./party-state.js";
+import {
+  createWoodcutters,
+  isWoodcutterCell,
+  woodcutterSceneConfig,
+} from "./npcs.js";
 
 const cells = buildMap();
 const sceneFrame = document.getElementById("sceneFrame");
@@ -59,6 +64,10 @@ const miniEls = new Map();
 
 /** Active enemies in the current scene. */
 let enemies = [];
+/** Active friendly NPCs in the current scene. */
+let npcs = [];
+/** Whether the party has approached NPCs this visit (stops chopping / shows dialogue). */
+let npcsAlerted = false;
 /** Pending spawn timers for the current scene. */
 const spawnTimers = [];
 /** Prevent double-triggering an encounter while navigating away. */
@@ -188,7 +197,15 @@ function clearSpawnTimers() {
 function clearEnemies() {
   clearSpawnTimers();
   enemies = [];
-  entityLayer.innerHTML = "";
+  entityLayer.querySelectorAll(".enemy-sprite").forEach((el) => el.remove());
+}
+
+function clearNpcs() {
+  npcs = [];
+  npcsAlerted = false;
+  entityLayer
+    .querySelectorAll(".npc-sprite, .npc-dialogue")
+    .forEach((el) => el.remove());
 }
 
 function syncEnemyDom() {
@@ -215,6 +232,95 @@ function syncEnemyDom() {
     el.style.top = `${(enemy.y / SCENE_H) * 100}%`;
     el.classList.toggle("is-flip", enemy.facing === "left");
   });
+}
+
+function syncNpcDom() {
+  const existing = new Map(
+    [...entityLayer.querySelectorAll(".npc-sprite")].map((el) => [el.dataset.npcId, el])
+  );
+
+  const keep = new Set(npcs.map((n) => n.id));
+  existing.forEach((el, id) => {
+    if (!keep.has(id)) el.remove();
+  });
+
+  npcs.forEach((npc) => {
+    let el = existing.get(npc.id);
+    if (!el) {
+      el = document.createElement("div");
+      el.className = "npc-sprite";
+      el.dataset.npcId = npc.id;
+      el.dataset.npcKind = npc.kind || "npc";
+      el.innerHTML = `
+        <span class="npc-sprite__axe" aria-hidden="true"></span>
+        <img src="${npc.src}" alt="${npc.name}" width="40" height="44" draggable="false" />
+      `;
+      entityLayer.appendChild(el);
+    }
+    el.style.left = `${(npc.x / SCENE_W) * 100}%`;
+    el.style.top = `${(npc.y / SCENE_H) * 100}%`;
+    el.classList.toggle("is-flip", npc.facing === "left");
+    el.classList.toggle("is-chopping", Boolean(npc.chopping));
+    el.classList.toggle("is-idle", !npc.chopping);
+  });
+
+  syncNpcDialogue();
+}
+
+function syncNpcDialogue() {
+  const config = woodcutterSceneConfig();
+  let bubble = entityLayer.querySelector(".npc-dialogue");
+
+  if (!npcsAlerted || !npcs.length) {
+    bubble?.remove();
+    return;
+  }
+
+  const speaker = npcs.find((n) => n.speaker) || npcs[0];
+  if (!bubble) {
+    bubble = document.createElement("div");
+    bubble.className = "npc-dialogue";
+    bubble.setAttribute("role", "status");
+    entityLayer.appendChild(bubble);
+  }
+
+  bubble.textContent = config.dialogue;
+  // Anchor above the speaker sprite.
+  const bubbleX = speaker.x + SPRITE_W / 2;
+  const bubbleY = speaker.y - 4;
+  bubble.style.left = `${(bubbleX / SCENE_W) * 100}%`;
+  bubble.style.top = `${(bubbleY / SCENE_H) * 100}%`;
+}
+
+function setupNpcScene(cell) {
+  clearNpcs();
+  if (!isWoodcutterCell(cell)) return;
+  npcs = createWoodcutters();
+  npcsAlerted = false;
+  syncNpcDom();
+  setStatus("Woodcutters work the trees. Approach them.");
+}
+
+function checkNpcApproach() {
+  if (npcsAlerted || !npcs.length || isTransitioning || encounterLocked) return;
+
+  const config = woodcutterSceneConfig();
+  const partyCx = spritePos.x + SPRITE_W / 2;
+  const partyCy = spritePos.y + SPRITE_H / 2;
+  const limit = config.approachDistance;
+
+  const near = npcs.some((npc) => {
+    const nx = npc.x + SPRITE_W / 2;
+    const ny = npc.y + SPRITE_H / 2;
+    return Math.hypot(nx - partyCx, ny - partyCy) <= limit;
+  });
+
+  if (!near) return;
+
+  npcsAlerted = true;
+  npcs = npcs.map((npc) => ({ ...npc, chopping: false }));
+  syncNpcDom();
+  setStatus(config.dialogue);
 }
 
 function spawnGoblin() {
@@ -283,7 +389,10 @@ function scheduleSceneSpawns(cell) {
 
 function onSceneReady(cell) {
   clearEnemies();
+  setupNpcScene(cell);
   scheduleSceneSpawns(cell);
+  // If the party already stands near NPCs (edge entry / battle return), alert now.
+  checkNpcApproach();
 }
 
 function updateEnemies(dt) {
@@ -400,6 +509,7 @@ function renderScene({ animateFrame = false } = {}) {
   );
   updateHudLabels(cell);
   syncEnemyDom();
+  syncNpcDom();
 }
 
 function placeSpriteDom(x, y) {
@@ -533,6 +643,7 @@ function tick(ts) {
 
   updateEnemies(dt);
   if (encounterLocked) return;
+  checkNpcApproach();
 
   const { dx, dy } = currentDelta();
   if (!dx && !dy) {
@@ -554,6 +665,7 @@ function tick(ts) {
   placeSpriteDom(spritePos.x, spritePos.y);
   checkEncounterContact();
   if (encounterLocked) return;
+  checkNpcApproach();
 
   const edgeDx = hitEdgeX ? dx : 0;
   const edgeDy = hitEdgeY ? dy : 0;

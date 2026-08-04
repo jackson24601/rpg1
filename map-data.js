@@ -27,6 +27,18 @@ export const SPECIALS = {
 export const START = { x: 3, y: 11 };
 
 /**
+ * Walkable story / NPC scenes that keep their base terrain art.
+ * Keys are "x,y" (column, row). `noSpawn` blocks overworld enemies.
+ */
+export const NPC_SCENES = {
+  "5,7": {
+    id: "woodcutters",
+    name: "Woodcutter Clearing",
+    noSpawn: true,
+  },
+};
+
+/**
  * Base terrain for every cell. Specials (red landmark cells) and
  * mountains are impassable for now — specials will be built out later.
  * The party may still begin on Initial Sequence via START.
@@ -74,9 +86,12 @@ export function buildMap() {
       const key = `${x},${y}`;
       const code = RAW[y][x];
       const specialName = SPECIALS[key] || null;
+      const npcScene = NPC_SCENES[key] || null;
       const terrain = specialName || code === "S" ? TERRAIN.special : CODE[code];
       const resolvedName =
-        specialName || (terrain === TERRAIN.special ? "Landmark" : labelFor(terrain));
+        specialName ||
+        npcScene?.name ||
+        (terrain === TERRAIN.special ? "Landmark" : labelFor(terrain));
       cells.push({
         x,
         y,
@@ -84,6 +99,8 @@ export function buildMap() {
         name: resolvedName,
         walkable: terrain !== TERRAIN.mountain && terrain !== TERRAIN.special,
         special: terrain === TERRAIN.special,
+        noSpawn: Boolean(npcScene?.noSpawn),
+        npcScene: npcScene?.id || null,
       });
     }
   }

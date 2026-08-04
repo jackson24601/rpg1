@@ -38,11 +38,21 @@ export const ORC_SPAWN_CHANCE = 0.5;
 let nextEnemyId = 1;
 
 export function canSpawnGoblins(cell) {
-  return Boolean(cell && !cell.special && GOBLIN_TERRAINS.has(cell.terrain));
+  return Boolean(
+    cell &&
+      !cell.special &&
+      !cell.noSpawn &&
+      GOBLIN_TERRAINS.has(cell.terrain)
+  );
 }
 
 export function canSpawnOrcs(cell) {
-  return Boolean(cell && !cell.special && ORC_TERRAINS.has(cell.terrain));
+  return Boolean(
+    cell &&
+      !cell.special &&
+      !cell.noSpawn &&
+      ORC_TERRAINS.has(cell.terrain)
+  );
 }
 
 export function createGoblin(x, y, facing = "down") {
