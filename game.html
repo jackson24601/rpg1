@@ -11,6 +11,7 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="game.css" />
+    <link rel="stylesheet" href="inventory.css" />
   </head>
   <body class="game-page">
     <div class="game-backdrop" aria-hidden="true"></div>
@@ -20,7 +21,10 @@
         <div class="hud__top">
           <a class="back-link" href="party.html">← Party</a>
           <h1 class="hud__title">Dragon Quest</h1>
-          <p class="hud__coords" id="coordsLabel">—</p>
+          <div class="hud__top-right">
+            <button type="button" class="inventory-btn" id="inventoryBtn">Inventory</button>
+            <p class="hud__coords" id="coordsLabel">—</p>
+          </div>
         </div>
         <p class="hud__location" id="locationLabel">Initial Sequence</p>
         <ul class="party-strip" id="partyStrip" aria-label="Your party"></ul>

@@ -63,6 +63,14 @@ body.battle-page {
   text-align: center;
 }
 
+.battle-header__row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
 .battle-title {
   margin: 0;
   font-family: "Luckiest Guy", cursive;

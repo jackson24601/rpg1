@@ -155,6 +155,8 @@ confirmBtn.addEventListener("click", () => {
   sessionStorage.setItem("dragonQuestParty", JSON.stringify(party));
   // New party starts at full vitals — drop any leftover combat HP/stamina.
   sessionStorage.removeItem("dragonQuestPartyState");
+  // Fresh adventure inventory.
+  sessionStorage.removeItem("dragonQuestInventory");
   setDetail(
     `Party ready: ${party.map((member) => member.name).join(", ")}. Entering the overworld…`
   );

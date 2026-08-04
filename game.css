@@ -93,6 +93,13 @@ body.game-page {
   text-shadow: 0 3px 0 var(--gold-dark);
 }
 
+.hud__top-right {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  justify-content: flex-end;
+}
+
 .hud__coords {
   margin: 0;
   font-size: 1.15rem;
