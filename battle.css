@@ -242,6 +242,16 @@ body.battle-page {
   filter: grayscale(0.8);
 }
 
+.battle-fighter.is-exhausted {
+  opacity: 0.7;
+  filter: saturate(0.55);
+}
+
+.battle-fighter.is-exhausted .battle-fighter__label::after {
+  content: " (tired)";
+  color: var(--muted);
+}
+
 .battle-fighter.is-active {
   filter: drop-shadow(0 0 6px rgba(240, 201, 77, 0.85));
 }

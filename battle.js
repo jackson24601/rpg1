@@ -51,9 +51,9 @@ let pendingAction = null;
 let outcome = null;
 
 const PARTY_SLOTS = [
-  { left: "72%", top: "78%" },
-  { left: "86%", top: "68%" },
-  { left: "78%", top: "52%" },
+  { left: "70%", top: "82%" },
+  { left: "84%", top: "70%" },
+  { left: "76%", top: "58%" },
 ];
 
 const SUMMON_SLOTS = [
@@ -214,16 +214,14 @@ function buildPartyCombatants() {
     return c;
   };
 
-  if (!members.length) {
-    // Fallback party for direct battle QA
-    return ["fighter", "wizard", "cleric"]
-      .map((id) => createCombatant(id))
-      .map((c, i) => finalize(c, i))
-      .filter(Boolean);
-  }
+  const ids = members.length
+    ? members.map((member) =>
+        typeof member === "string" ? member : member?.id
+      )
+    : ["fighter", "wizard", "cleric"]; // Fallback party for direct battle QA
 
-  return members
-    .map((member, i) => finalize(createCombatant(member.id), i))
+  return ids
+    .map((id, i) => finalize(createCombatant(id), i))
     .filter(Boolean);
 }
 
@@ -271,6 +269,8 @@ function makeFighterEl(unit, slot, side) {
   if (!unit.alive || unit.hitPoints <= 0) {
     el.classList.add("is-dead");
     el.disabled = true;
+  } else if (unit.stamina != null && unit.stamina <= 0) {
+    el.classList.add("is-exhausted");
   }
   if (unit.defending) el.classList.add("is-defending");
 
@@ -333,30 +333,31 @@ function actionNeedsAllyTarget(action) {
   );
 }
 
-function currentCommandActor() {
-  const heroes = party;
-  while (commandIndex < heroes.length) {
-    const actor = heroes[commandIndex];
-    if (!actor.alive || actor.hitPoints <= 0) {
-      commandIndex += 1;
-      continue;
-    }
-    if (actor.stamina != null && actor.stamina <= 0) {
-      setLog(`${actor.name} is too exhausted to act!`);
-      plans.set(actor.instanceId, { kind: "skip" });
-      commandIndex += 1;
-      continue;
-    }
-    if (actor.skipNextTurn) {
-      setLog(`${actor.name} cannot act this round!`);
-      plans.set(actor.instanceId, { kind: "skip" });
-      actor.skipNextTurn = false;
-      commandIndex += 1;
-      continue;
-    }
-    return actor;
-  }
+/** Why a hero cannot choose an action this round, or null if they can act. */
+function unableReason(actor) {
+  if (!actor) return "missing";
+  if (!actor.alive || actor.hitPoints <= 0) return "fallen";
+  if (actor.stamina != null && actor.stamina <= 0) return "exhausted";
+  if (actor.skipNextTurn) return "held";
   return null;
+}
+
+function unableMessage(actor, reason) {
+  if (reason === "fallen") {
+    return `${actor.name} has fallen and cannot act.`;
+  }
+  if (reason === "exhausted") {
+    return `${actor.name} is too exhausted to act!`;
+  }
+  if (reason === "held") {
+    return `${actor.name} cannot act this round!`;
+  }
+  return `${actor.name} cannot act.`;
+}
+
+function currentCommandActor() {
+  if (commandIndex >= party.length) return null;
+  return party[commandIndex] || null;
 }
 
 function beginCommandPhase() {
@@ -399,10 +400,46 @@ function showExecuteContinue() {
   endBtn.disabled = false;
 }
 
+function advanceCommand() {
+  commandIndex += 1;
+  promptNextCommand();
+}
+
+/**
+ * Every party slot still gets a command-phase beat — even when the hero cannot
+ * act — so a third member (e.g. Cleric) is never silently skipped.
+ */
+function promptUnableCommand(actor, reason) {
+  phase = "command";
+  pendingAction = null;
+  clearTargetables();
+  hideEndPanel();
+  markActive(actor);
+  plans.set(actor.instanceId, { kind: "skip" });
+
+  const message = unableMessage(actor, reason);
+  actorPanel.textContent = `${actor.name}'s turn — HP ${actor.hitPoints}/${actor.maxHitPoints} · STA ${actor.stamina ?? "—"}/${actor.maxStamina ?? "—"}`;
+  setLog(message);
+  setPrompt(message);
+  actionMenu.innerHTML = "";
+  actionMenu.appendChild(
+    makeActionButton("Skip", () => {
+      if (reason === "held") actor.skipNextTurn = false;
+      advanceCommand();
+    })
+  );
+}
+
 function promptNextCommand() {
   const actor = currentCommandActor();
   if (!actor) {
     showExecuteContinue();
+    return;
+  }
+
+  const reason = unableReason(actor);
+  if (reason) {
+    promptUnableCommand(actor, reason);
     return;
   }
 
@@ -471,9 +508,8 @@ function makeActionButton(label, onClick, variant) {
 
 function lockAction(actor, action) {
   plans.set(actor.instanceId, action);
-  commandIndex += 1;
   actionMenu.innerHTML = "";
-  promptNextCommand();
+  advanceCommand();
 }
 
 function selectAttack(actor, move) {
