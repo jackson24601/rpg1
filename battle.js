@@ -14,6 +14,8 @@ import { buildEncounter, encounterCountFor } from "./combat-enemies.js";
 
 const BATTLE_KEY = "dragonQuestBattle";
 const PARTY_KEY = "dragonQuestParty";
+/** Persists HP/stamina between battles for the current party. */
+const PARTY_STATE_KEY = "dragonQuestPartyState";
 
 const battleSubtitle = document.getElementById("battleSubtitle");
 const enemySide = document.getElementById("enemySide");
@@ -83,6 +85,60 @@ function loadPartyIds() {
   }
 }
 
+function loadPartyCombatState() {
+  try {
+    const raw = sessionStorage.getItem(PARTY_STATE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+/** Save current party HP/stamina so the next battle resumes from these values. */
+function savePartyCombatState(heroes) {
+  const state = {};
+  heroes.forEach((hero) => {
+    if (!hero?.id) return;
+    state[hero.id] = {
+      hitPoints: Math.max(0, Number(hero.hitPoints) || 0),
+      stamina:
+        hero.stamina == null ? null : Math.max(0, Number(hero.stamina) || 0),
+    };
+  });
+  sessionStorage.setItem(PARTY_STATE_KEY, JSON.stringify(state));
+}
+
+function clearPartyCombatState() {
+  sessionStorage.removeItem(PARTY_STATE_KEY);
+}
+
+function applyPersistedVitals(combatant, saved) {
+  if (!combatant || !saved) return combatant;
+
+  if (typeof saved.hitPoints === "number" && Number.isFinite(saved.hitPoints)) {
+    combatant.hitPoints = Math.max(
+      0,
+      Math.min(combatant.maxHitPoints, saved.hitPoints)
+    );
+  }
+
+  if (
+    combatant.maxStamina != null &&
+    typeof saved.stamina === "number" &&
+    Number.isFinite(saved.stamina)
+  ) {
+    combatant.stamina = Math.max(
+      0,
+      Math.min(combatant.maxStamina, saved.stamina)
+    );
+  }
+
+  combatant.alive = combatant.hitPoints > 0;
+  return combatant;
+}
+
 function rollSuccess(rating) {
   if (rating == null || !Number.isFinite(Number(rating))) return false;
   return Math.random() < successChance(rating);
@@ -138,33 +194,30 @@ function ensureInstanceIds(combatants, prefix) {
 }
 
 function buildPartyCombatants() {
+  const saved = loadPartyCombatState();
   const members = loadPartyIds();
+
+  const finalize = (c, i) => {
+    if (!c) return null;
+    applyPersistedVitals(c, saved[c.id]);
+    c.instanceId = `hero-${i}`;
+    c.kind = "hero";
+    c.src = `assets/overworld/${c.id}.png`;
+    c.defending = false;
+    c.skipNextTurn = false;
+    return c;
+  };
+
   if (!members.length) {
     // Fallback party for direct battle QA
     return ["fighter", "wizard", "cleric"]
       .map((id) => createCombatant(id))
-      .filter(Boolean)
-      .map((c, i) => {
-        c.instanceId = `hero-${i}`;
-        c.kind = "hero";
-        c.src = `assets/overworld/${c.id}.png`;
-        c.defending = false;
-        c.skipNextTurn = false;
-        return c;
-      });
+      .map((c, i) => finalize(c, i))
+      .filter(Boolean);
   }
 
   return members
-    .map((member, i) => {
-      const c = createCombatant(member.id);
-      if (!c) return null;
-      c.instanceId = `hero-${i}`;
-      c.kind = "hero";
-      c.src = `assets/overworld/${c.id}.png`;
-      c.defending = false;
-      c.skipNextTurn = false;
-      return c;
-    })
+    .map((member, i) => finalize(createCombatant(member.id), i))
     .filter(Boolean);
 }
 
@@ -770,11 +823,15 @@ async function endBattle(result) {
   endBtn.disabled = false;
 
   if (result === "win") {
+    // Carry HP/stamina into the next encounter.
+    savePartyCombatState(party);
     setLog("Victory! All enemies have fallen.");
     setPrompt("You win the battle.");
     battleSubtitle.textContent = "Victory";
     endBtn.textContent = "Return to World";
   } else {
+    // Party wiped — clear vitals so a new party starts fresh.
+    clearPartyCombatState();
     setLog("Your party has fallen…");
     setPrompt("Defeat.");
     battleSubtitle.textContent = "Defeat";
@@ -791,12 +848,14 @@ endBtn.addEventListener("click", () => {
   }
 
   if (outcome === "win") {
+    savePartyCombatState(party);
     sessionStorage.removeItem(BATTLE_KEY);
     window.location.href = "game.html";
     return;
   }
 
   if (outcome === "lose") {
+    clearPartyCombatState();
     sessionStorage.removeItem(BATTLE_KEY);
     window.location.href = "party.html";
   }
