@@ -148,6 +148,10 @@ body.battle-page {
   pointer-events: none;
 }
 
+.battle-side--party .battle-fighter {
+  z-index: 3;
+}
+
 .battle-fighter {
   appearance: none;
   -webkit-appearance: none;
