@@ -11,13 +11,17 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="battle.css" />
+    <link rel="stylesheet" href="inventory.css" />
   </head>
   <body class="battle-page">
     <div class="battle-backdrop" aria-hidden="true"></div>
 
     <main class="battle-shell">
       <header class="battle-header rpg-window">
-        <h1 class="battle-title">Dragon Quest</h1>
+        <div class="battle-header__row">
+          <h1 class="battle-title">Dragon Quest</h1>
+          <button type="button" class="inventory-btn" id="inventoryBtn">Inventory</button>
+        </div>
         <p class="battle-subtitle" id="battleSubtitle">Combat</p>
       </header>
 

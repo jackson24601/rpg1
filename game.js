@@ -27,6 +27,7 @@ import {
   EARLY_SPAWN_WINDOW_MS,
   FORCED_SPAWN_MS,
 } from "./enemies.js";
+import { bindInventoryButton } from "./inventory-ui.js";
 
 const cells = buildMap();
 const sceneFrame = document.getElementById("sceneFrame");
@@ -574,6 +575,7 @@ buildMinimap();
 renderScene();
 placeSpriteDom(spritePos.x, spritePos.y);
 bindControls();
+bindInventoryButton("#inventoryBtn");
 rafId = requestAnimationFrame(tick);
 
 const startCell = cellAt(cells, position.x, position.y);

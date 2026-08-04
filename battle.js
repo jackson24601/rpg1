@@ -11,6 +11,8 @@ import {
   createSummon,
 } from "./characters.js";
 import { buildEncounter, encounterCountFor } from "./combat-enemies.js";
+import { addGold, roll2d6 } from "./inventory.js";
+import { bindInventoryButton } from "./inventory-ui.js";
 
 const BATTLE_KEY = "dragonQuestBattle";
 const PARTY_KEY = "dragonQuestParty";
@@ -825,8 +827,10 @@ async function endBattle(result) {
   if (result === "win") {
     // Carry HP/stamina into the next encounter.
     savePartyCombatState(party);
-    setLog("Victory! All enemies have fallen.");
-    setPrompt("You win the battle.");
+    const goldRoll = roll2d6();
+    const { inventory } = addGold(goldRoll);
+    setLog("The Goblins drop gold! You pick it up.");
+    setPrompt(`Gained ${goldRoll} gold. Total: ${inventory.gold}.`);
     battleSubtitle.textContent = "Victory";
     endBtn.textContent = "Return to World";
   } else {
@@ -895,4 +899,5 @@ function init() {
   beginCommandPhase();
 }
 
+bindInventoryButton("#inventoryBtn");
 init();
