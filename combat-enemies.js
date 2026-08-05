@@ -40,6 +40,25 @@ export const COMBAT_ENEMIES = {
     /** Always attack the living party member with the lowest HP. */
     ai: "alwaysAttackLowestHp",
   },
+  hydra: {
+    id: "hydra",
+    name: "Hydra",
+    src: "assets/enemies/hydra.png",
+    hitPoints: 20,
+    /** 75% chance to hit. */
+    attack: 7.5,
+    attackDamage: 5,
+    defend: null,
+    stamina: null,
+    intelligence: null,
+    attackTypes: ["Bite"],
+    defendType: null,
+    spells: [],
+    skills: [],
+    ai: "alwaysAttack",
+    /** Flat gold awarded when the encounter is won. */
+    goldDrop: 20,
+  },
 };
 
 let nextCombatEnemyId = 1;
@@ -88,7 +107,7 @@ export function rollRange(min, max) {
 
 /**
  * Troop size at combat start.
- * Goblins: d6 (1–6). Orcs: 1–3. Others: explicit count or 1.
+ * Goblins: d6 (1–6). Orcs: 1–3. Hydras: always 1. Others: explicit count or 1.
  */
 export function encounterCountFor(enemyTypeId, explicitCount) {
   if (enemyTypeId === "goblin") {
@@ -97,8 +116,20 @@ export function encounterCountFor(enemyTypeId, explicitCount) {
   if (enemyTypeId === "orc") {
     return rollRange(1, 3);
   }
+  if (enemyTypeId === "hydra") {
+    return 1;
+  }
   const n = Number(explicitCount);
   return Number.isFinite(n) && n > 0 ? Math.floor(n) : 1;
+}
+
+/** Gold awarded for defeating an encounter of this enemy type. */
+export function goldDropFor(enemyTypeId) {
+  const template = COMBAT_ENEMIES[enemyTypeId];
+  if (template && typeof template.goldDrop === "number") {
+    return template.goldDrop;
+  }
+  return null;
 }
 
 export function buildEncounter(enemyTypeId, count = 1) {

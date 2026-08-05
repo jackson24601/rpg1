@@ -21,8 +21,10 @@ import {
 import {
   canSpawnGoblins,
   canSpawnOrcs,
+  canSpawnHydras,
   createGoblin,
   createOrc,
+  createHydra,
   pickSpawnAwayFrom,
   chaseStep,
   EARLY_SPAWN_CHANCE,
@@ -30,6 +32,7 @@ import {
   FORCED_SPAWN_MS,
   ORC_SPAWN_DELAY_MS,
   ORC_SPAWN_CHANCE,
+  HYDRA_SPAWN_INTERVAL_MS,
 } from "./enemies.js";
 import { bindInventoryButton } from "./inventory-ui.js";
 import { STAMINA_REGEN_INTERVAL_MS } from "./characters.js";
@@ -190,7 +193,9 @@ function updateHudLabels(cell) {
 
 function clearSpawnTimers() {
   while (spawnTimers.length) {
-    clearTimeout(spawnTimers.pop());
+    const id = spawnTimers.pop();
+    clearTimeout(id);
+    clearInterval(id);
   }
 }
 
@@ -227,6 +232,15 @@ function syncEnemyDom() {
       el.dataset.enemyType = enemy.type;
       el.innerHTML = `<img src="${enemy.src}" alt="${enemy.name}" width="40" height="44" draggable="false" />`;
       entityLayer.appendChild(el);
+      if (enemy.rising) {
+        el.classList.add("is-rising");
+        const clearRise = () => {
+          el.classList.remove("is-rising");
+          enemy.rising = false;
+          el.removeEventListener("animationend", clearRise);
+        };
+        el.addEventListener("animationend", clearRise);
+      }
     }
     el.style.left = `${(enemy.x / SCENE_W) * 100}%`;
     el.style.top = `${(enemy.y / SCENE_H) * 100}%`;
@@ -347,6 +361,18 @@ function spawnOrc() {
   setStatus("An Orc appears!");
 }
 
+function spawnHydra() {
+  const cell = cellAt(cells, position.x, position.y);
+  if (!canSpawnHydras(cell)) return;
+  if (enemies.some((e) => e.type === "hydra")) return;
+
+  const pos = pickSpawnAwayFrom(spritePos);
+  const toward = facingFromDelta(spritePos.x - pos.x, spritePos.y - pos.y);
+  enemies.push(createHydra(pos.x, pos.y, toward));
+  syncEnemyDom();
+  setStatus("A Hydra rises from the swamp!");
+}
+
 function scheduleSceneSpawns(cell) {
   clearSpawnTimers();
   const params = new URLSearchParams(window.location.search);
@@ -357,6 +383,9 @@ function scheduleSceneSpawns(cell) {
   const forceOrc =
     forceEnemy === "orc" ||
     sessionStorage.getItem("dragonQuestForceOrc") === "1";
+  const forceHydra =
+    forceEnemy === "hydra" ||
+    sessionStorage.getItem("dragonQuestForceHydra") === "1";
 
   if (canSpawnGoblins(cell)) {
     // 50% chance a Goblin shows up within the first second.
@@ -385,6 +414,17 @@ function scheduleSceneSpawns(cell) {
       }, forceOrc ? 200 : ORC_SPAWN_DELAY_MS)
     );
   }
+
+  if (canSpawnHydras(cell)) {
+    // Every 5 seconds in a swamp, a Hydra rises (one at a time on the overworld).
+    const firstDelay = forceHydra ? 200 : HYDRA_SPAWN_INTERVAL_MS;
+    spawnTimers.push(setTimeout(spawnHydra, firstDelay));
+    spawnTimers.push(
+      setInterval(() => {
+        spawnHydra();
+      }, HYDRA_SPAWN_INTERVAL_MS)
+    );
+  }
 }
 
 function onSceneReady(cell) {
@@ -397,7 +437,11 @@ function onSceneReady(cell) {
 
 function updateEnemies(dt) {
   if (!enemies.length) return;
-  enemies = enemies.map((enemy) => chaseStep(enemy, spritePos, WALK_SPEED, dt));
+  enemies = enemies.map((enemy) => {
+    // Hold still while rising out of the swamp.
+    if (enemy.rising) return enemy;
+    return chaseStep(enemy, spritePos, WALK_SPEED, dt);
+  });
   syncEnemyDom();
   checkEncounterContact();
 }

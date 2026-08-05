@@ -13,6 +13,7 @@ import {
 import {
   buildEncounter,
   encounterCountFor,
+  goldDropFor,
   pickLowestHpTarget,
 } from "./combat-enemies.js";
 import { addGold, roll2d6 } from "./inventory.js";
@@ -854,13 +855,16 @@ async function endBattle(result) {
   if (result === "win") {
     // Carry HP/stamina into the next encounter.
     savePartyCombatState(party);
-    const goldRoll = roll2d6();
-    const { inventory } = addGold(goldRoll);
     const foeId = enemies[0]?.id || "goblin";
+    const fixedGold = goldDropFor(foeId);
+    const goldRoll = fixedGold != null ? fixedGold : roll2d6();
+    const { inventory } = addGold(goldRoll);
     const dropLine =
-      foeId === "orc"
-        ? "The Orcs drop gold! You pick it up."
-        : "The Goblins drop gold! You pick it up.";
+      foeId === "hydra"
+        ? "The Hydra drops gold! You pick it up."
+        : foeId === "orc"
+          ? "The Orcs drop gold! You pick it up."
+          : "The Goblins drop gold! You pick it up.";
     setLog(dropLine);
     setPrompt(`Gained ${goldRoll} gold. Total: ${inventory.gold}.`);
     battleSubtitle.textContent = "Victory";
@@ -921,15 +925,23 @@ function init() {
     return;
   }
 
-  const plural =
-    enemyType === "orc" ? (count > 1 ? "Orcs" : "Orc") : count > 1 ? "Goblins" : "Goblin";
-  battleSubtitle.textContent = `Battle — ${count > 1 ? `${count} ${plural}` : plural}`;
+  const label =
+    enemyType === "hydra"
+      ? "Hydra"
+      : enemyType === "orc"
+        ? count > 1
+          ? "Orcs"
+          : "Orc"
+        : count > 1
+          ? "Goblins"
+          : "Goblin";
+  battleSubtitle.textContent = `Battle — ${count > 1 ? `${count} ${label}` : label}`;
 
   renderFighters();
   setLog(
     count > 1
-      ? `${count} ${plural} draw near! Your party acts first.`
-      : `A ${plural} draws near! Your party acts first.`
+      ? `${count} ${label} draw near! Your party acts first.`
+      : `A ${label} draws near! Your party acts first.`
   );
   beginCommandPhase();
 }
