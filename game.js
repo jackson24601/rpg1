@@ -453,6 +453,7 @@ function checkEncounterContact() {
   const partyCy = spritePos.y + SPRITE_H / 2;
 
   for (const enemy of enemies) {
+    if (enemy.rising) continue;
     const ex = enemy.x + SPRITE_W / 2;
     const ey = enemy.y + SPRITE_H / 2;
     if (Math.hypot(ex - partyCx, ey - partyCy) <= ENCOUNTER_DISTANCE) {
