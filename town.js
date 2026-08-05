@@ -37,6 +37,9 @@ const coordsLabel = document.getElementById("coordsLabel");
 const statusLine = document.getElementById("statusLine");
 const partyStrip = document.getElementById("partyStrip");
 const townMinimap = document.getElementById("townMinimap");
+const shopDialog = document.getElementById("shopDialog");
+const shopDialogText = document.getElementById("shopDialogText");
+const shopDialogChoices = document.getElementById("shopDialogChoices");
 
 const position = { ...TOWN_ENTRANCE };
 let facing = "up";
@@ -47,6 +50,12 @@ let mode = "outdoor";
 let interiorId = null;
 /** Outdoor cell to restore when leaving an interior. */
 let interiorReturn = null;
+
+/** Grocery counter dialogue state. */
+let shopDialogOpen = false;
+let nearGroceryCounter = false;
+/** Sprite Y at or above this counts as approaching the counter. */
+const GROCERY_COUNTER_APPROACH_Y = 150;
 
 let isTransitioning = false;
 let rafId = 0;
@@ -301,6 +310,74 @@ function leaveTown() {
   window.location.href = "game.html";
 }
 
+function clearHeldMovement() {
+  held.up = held.down = held.left = held.right = false;
+  setWalkingVisual(false);
+  lastTs = 0;
+}
+
+function closeShopDialog() {
+  shopDialogOpen = false;
+  shopDialog.hidden = true;
+  shopDialogChoices.innerHTML = "";
+}
+
+function showShopDialog(text, choices) {
+  shopDialogOpen = true;
+  clearHeldMovement();
+  shopDialogText.textContent = text;
+  shopDialogChoices.innerHTML = "";
+  choices.forEach((choice) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "shop-dialog__choice";
+    btn.textContent = choice.label;
+    btn.addEventListener("click", () => choice.onSelect());
+    shopDialogChoices.appendChild(btn);
+  });
+  shopDialog.hidden = false;
+  shopDialogChoices.querySelector("button")?.focus();
+}
+
+function showGroceryWelcome() {
+  showShopDialog("Welcome! What can I do for you?", [
+    {
+      label: "I'd like to buy something,",
+      onSelect: () => {
+        showShopDialog(
+          "I've got fresh goods when you're ready to trade. (Buying comes soon.)",
+          [{ label: "Thanks.", onSelect: () => closeShopDialog() }]
+        );
+      },
+    },
+    {
+      label: "Any news?",
+      onSelect: () => {
+        showShopDialog(
+          "Travelers say outlaws still haunt the woods north of town. Be careful on the road.",
+          [{ label: "I'll keep an eye out.", onSelect: () => closeShopDialog() }]
+        );
+      },
+    },
+  ]);
+}
+
+function checkGroceryCounterApproach() {
+  if (mode !== "interior" || interiorId !== "grocery" || shopDialogOpen) {
+    return;
+  }
+
+  const atCounter = spritePos.y <= GROCERY_COUNTER_APPROACH_Y;
+  if (atCounter && !nearGroceryCounter) {
+    nearGroceryCounter = true;
+    showGroceryWelcome();
+    return;
+  }
+  if (!atCounter) {
+    nearGroceryCounter = false;
+  }
+}
+
 function enterInterior(buildingCell, buildingX, buildingY, fromDx, fromDy) {
   mode = "interior";
   interiorId = buildingCell.interior;
@@ -314,16 +391,22 @@ function enterInterior(buildingCell, buildingX, buildingY, fromDx, fromDy) {
   };
   facing = facingFromDelta(fromDx, fromDy);
   spritePos = { x: REST_POS.x, y: SCENE_H - SPRITE_H - 10 };
+  nearGroceryCounter = false;
+  closeShopDialog();
   renderScene();
   const interior = INTERIORS[interiorId];
   setStatus(
     interior?.kind === "tavern"
       ? "You step into Hero's Hall. Patrons mill about the tavern."
-      : `You enter the ${interior?.name || "shop"}. Goods line the shelves behind the counter.`
+      : interiorId === "grocery"
+        ? "You enter the Grocery. Approach the counter to speak with the grocer."
+        : `You enter the ${interior?.name || "shop"}. Goods line the shelves behind the counter.`
   );
 }
 
 function exitInterior() {
+  closeShopDialog();
+  nearGroceryCounter = false;
   if (!interiorReturn) {
     mode = "outdoor";
     interiorId = null;
@@ -438,7 +521,7 @@ async function tryEdgeTransition(dx, dy) {
 
 function tick(ts) {
   rafId = requestAnimationFrame(tick);
-  if (isTransitioning) return;
+  if (isTransitioning || shopDialogOpen) return;
 
   if (!lastTs) lastTs = ts;
   const dt = Math.min(0.05, (ts - lastTs) / 1000);
@@ -447,6 +530,7 @@ function tick(ts) {
   const { dx, dy } = currentDelta();
   if (!dx && !dy) {
     setWalkingVisual(false);
+    checkGroceryCounterApproach();
     return;
   }
 
@@ -461,6 +545,8 @@ function tick(ts) {
   const hitEdgeY = clamped.y !== nextY;
   spritePos = clamped;
   placeSpriteDom(spritePos.x, spritePos.y);
+  checkGroceryCounterApproach();
+  if (shopDialogOpen) return;
 
   const edgeDx = hitEdgeX ? dx : 0;
   const edgeDy = hitEdgeY ? dy : 0;
@@ -493,6 +579,7 @@ function bindControls() {
     const dir = facingFromDelta(dx, dy);
     const press = (event) => {
       event.preventDefault();
+      if (shopDialogOpen) return;
       btn.setPointerCapture?.(event.pointerId);
       setHeld(dir, true);
     };
@@ -508,6 +595,13 @@ function bindControls() {
   });
 
   window.addEventListener("keydown", (event) => {
+    if (shopDialogOpen) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeShopDialog();
+      }
+      return;
+    }
     const dir = KEY_DIR[event.key];
     if (!dir) return;
     if (event.repeat) {
@@ -518,6 +612,7 @@ function bindControls() {
     setHeld(dir, true);
   });
   window.addEventListener("keyup", (event) => {
+    if (shopDialogOpen) return;
     const dir = KEY_DIR[event.key];
     if (!dir) return;
     event.preventDefault();
