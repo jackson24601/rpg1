@@ -244,6 +244,140 @@ body.game-page {
   animation: party-walk 0.28s steps(2, end) infinite;
 }
 
+.npc-sprite {
+  position: absolute;
+  width: calc(40 / 320 * 100%);
+  height: calc(44 / 224 * 100%);
+  margin: 0;
+  padding: 0;
+  image-rendering: pixelated;
+  will-change: left, top, transform;
+  z-index: 2;
+}
+
+.npc-sprite img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+  object-position: bottom center;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 2px 0 rgba(10, 20, 12, 0.45));
+  position: relative;
+  z-index: 1;
+}
+
+.npc-sprite.is-flip {
+  transform: scaleX(-1);
+}
+
+.npc-sprite.is-chopping {
+  animation: npc-chop-bob 0.55s ease-in-out infinite;
+}
+
+.npc-sprite.is-idle {
+  animation: party-bob 1.2s ease-in-out infinite;
+}
+
+.npc-sprite__axe {
+  position: absolute;
+  left: 62%;
+  top: 28%;
+  width: 38%;
+  height: 38%;
+  z-index: 2;
+  transform-origin: 20% 85%;
+  background: linear-gradient(180deg, #d8dee8 0%, #9aa3b0 38%, #6b4a2a 38%, #4a321c 100%);
+  clip-path: polygon(50% 0, 100% 8%, 88% 42%, 62% 38%, 38% 100%, 18% 88%, 52% 34%, 40% 8%);
+  border-radius: 1px;
+  opacity: 0.95;
+  pointer-events: none;
+}
+
+.npc-sprite.is-flip .npc-sprite__axe {
+  left: auto;
+  right: 62%;
+}
+
+.npc-sprite.is-chopping .npc-sprite__axe {
+  animation: npc-axe-swing 0.55s ease-in-out infinite;
+}
+
+.npc-sprite.is-idle .npc-sprite__axe {
+  animation: none;
+  transform: rotate(-25deg);
+  opacity: 0.75;
+}
+
+.npc-dialogue {
+  position: absolute;
+  z-index: 5;
+  width: min(72%, 220px);
+  transform: translate(-50%, -100%);
+  padding: 0.45rem 0.55rem 0.55rem;
+  font-family: "VT323", monospace;
+  font-size: clamp(0.85rem, 2.6vw, 1.05rem);
+  line-height: 1.2;
+  color: #1a1420;
+  background: linear-gradient(180deg, #fff8e8 0%, #f0e2b8 100%);
+  border: 3px solid #1a1420;
+  border-radius: 6px;
+  box-shadow:
+    0 0 0 2px #f0c94d,
+    0 4px 0 rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+  animation: npc-dialogue-in 0.35s ease-out;
+}
+
+.npc-dialogue::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -10px;
+  width: 14px;
+  height: 10px;
+  transform: translateX(-50%);
+  background: #f0e2b8;
+  border-left: 3px solid #1a1420;
+  border-right: 3px solid #1a1420;
+  border-bottom: 3px solid #1a1420;
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+}
+
+@keyframes npc-chop-bob {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  40% {
+    translate: 0 1px;
+  }
+  70% {
+    translate: 0 -2px;
+  }
+}
+
+@keyframes npc-axe-swing {
+  0%,
+  100% {
+    transform: rotate(-40deg);
+  }
+  45% {
+    transform: rotate(55deg);
+  }
+}
+
+@keyframes npc-dialogue-in {
+  from {
+    opacity: 0;
+    translate: 0 6px;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
 @keyframes party-bob {
   0%,
   100% {
@@ -464,7 +598,12 @@ body.game-page {
   .scene-svg .party-sprite,
   .scene-frame.is-walking .scene-svg .party-sprite,
   .enemy-sprite,
-  .scene-frame.is-walking .enemy-sprite {
+  .scene-frame.is-walking .enemy-sprite,
+  .npc-sprite,
+  .npc-sprite.is-chopping,
+  .npc-sprite.is-idle,
+  .npc-sprite.is-chopping .npc-sprite__axe,
+  .npc-dialogue {
     animation: none;
   }
 }
