@@ -7,6 +7,8 @@ import { WALK_BOUNDS, SPRITE_W, SPRITE_H, SCENE_W, SCENE_H } from "./scene-rende
 export const GOBLIN_TERRAINS = new Set([TERRAIN.forest, TERRAIN.meadow]);
 /** Terrains where Orcs may appear. */
 export const ORC_TERRAINS = new Set([TERRAIN.forest]);
+/** Terrains where Hydras may appear. */
+export const HYDRA_TERRAINS = new Set([TERRAIN.swamp]);
 
 export const ENEMY_TYPES = {
   goblin: {
@@ -22,6 +24,12 @@ export const ENEMY_TYPES = {
     src: "assets/enemies/orc.png",
     speed: null,
   },
+  hydra: {
+    id: "hydra",
+    name: "Hydra",
+    src: "assets/enemies/hydra.png",
+    speed: null,
+  },
 };
 
 /** Chance a Goblin is scheduled shortly after entering a valid scene. */
@@ -34,6 +42,9 @@ export const FORCED_SPAWN_MS = 30_000;
 /** Orcs: after this delay, 50% chance one appears and chases the party. */
 export const ORC_SPAWN_DELAY_MS = 2000;
 export const ORC_SPAWN_CHANCE = 0.5;
+
+/** Hydras: while in a swamp, attempt a spawn on this interval. */
+export const HYDRA_SPAWN_INTERVAL_MS = 5000;
 
 let nextEnemyId = 1;
 
@@ -52,6 +63,15 @@ export function canSpawnOrcs(cell) {
       !cell.special &&
       !cell.noSpawn &&
       ORC_TERRAINS.has(cell.terrain)
+  );
+}
+
+export function canSpawnHydras(cell) {
+  return Boolean(
+    cell &&
+      !cell.special &&
+      !cell.noSpawn &&
+      HYDRA_TERRAINS.has(cell.terrain)
   );
 }
 
@@ -76,6 +96,20 @@ export function createOrc(x, y, facing = "down") {
     x,
     y,
     facing,
+  };
+}
+
+export function createHydra(x, y, facing = "down") {
+  return {
+    id: `enemy-${nextEnemyId++}`,
+    type: "hydra",
+    name: ENEMY_TYPES.hydra.name,
+    src: ENEMY_TYPES.hydra.src,
+    x,
+    y,
+    facing,
+    /** Play swamp rise intro on first paint. */
+    rising: true,
   };
 }
 

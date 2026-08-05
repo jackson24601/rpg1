@@ -240,6 +240,42 @@ body.game-page {
   transform: scaleX(-1);
 }
 
+.enemy-sprite[data-enemy-type="hydra"] {
+  width: calc(56 / 320 * 100%);
+  height: calc(56 / 224 * 100%);
+}
+
+.enemy-sprite[data-enemy-type="hydra"].is-flip {
+  transform: scaleX(-1);
+}
+
+/* Hydra emerges from the muck: clipped rise + swamp ripple. */
+.enemy-sprite.is-rising {
+  animation: hydra-rise 1.1s ease-out both;
+  z-index: 3;
+}
+
+.enemy-sprite.is-rising::before {
+  content: "";
+  position: absolute;
+  left: 10%;
+  right: 10%;
+  bottom: -6%;
+  height: 28%;
+  border-radius: 50%;
+  background:
+    radial-gradient(ellipse at 50% 60%, rgba(40, 70, 45, 0.75), transparent 70%),
+    radial-gradient(ellipse at 30% 50%, rgba(90, 140, 70, 0.45), transparent 60%);
+  animation: hydra-swamp-ripple 1.1s ease-out both;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.enemy-sprite.is-rising img {
+  clip-path: inset(100% 0 0 0);
+  animation: hydra-reveal 1.1s ease-out both;
+}
+
 .scene-frame.is-walking .enemy-sprite {
   animation: party-walk 0.28s steps(2, end) infinite;
 }
@@ -375,6 +411,43 @@ body.game-page {
   to {
     opacity: 1;
     translate: 0 0;
+  }
+}
+
+@keyframes hydra-rise {
+  0% {
+    translate: 0 18px;
+    opacity: 0.35;
+  }
+  55% {
+    opacity: 1;
+  }
+  100% {
+    translate: 0 0;
+    opacity: 1;
+  }
+}
+
+@keyframes hydra-reveal {
+  0% {
+    clip-path: inset(100% 0 0 0);
+  }
+  100% {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@keyframes hydra-swamp-ripple {
+  0% {
+    transform: scaleX(0.4);
+    opacity: 0;
+  }
+  35% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: scaleX(1.15);
+    opacity: 0;
   }
 }
 
@@ -604,11 +677,18 @@ body.game-page {
   .scene-frame.is-walking .scene-svg .party-sprite,
   .enemy-sprite,
   .scene-frame.is-walking .enemy-sprite,
+  .enemy-sprite.is-rising,
+  .enemy-sprite.is-rising img,
+  .enemy-sprite.is-rising::before,
   .npc-sprite,
   .npc-sprite.is-chopping,
   .npc-sprite.is-idle,
   .npc-sprite.is-chopping .npc-sprite__axe,
   .npc-dialogue {
     animation: none;
+  }
+
+  .enemy-sprite.is-rising img {
+    clip-path: none;
   }
 }

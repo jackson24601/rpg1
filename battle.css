@@ -241,6 +241,11 @@ body.battle-page {
   max-width: 110px;
 }
 
+.battle-fighter[data-unit-id="hydra"] {
+  width: 16%;
+  max-width: 120px;
+}
+
 .battle-fighter.is-dead {
   opacity: 0.35;
   filter: grayscale(0.8);
