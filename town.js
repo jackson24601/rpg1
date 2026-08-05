@@ -337,9 +337,9 @@ function exitInterior() {
   interiorId = null;
   position.x = interiorReturn.x;
   position.y = interiorReturn.y;
-  // Step back onto the road facing away from the doorway.
+  // Return to the center of the road, facing away from the shop doorway.
   facing = facingFromDelta(-interiorReturn.fromDx, -interiorReturn.fromDy);
-  spritePos = entryPosForDelta(-interiorReturn.fromDx, -interiorReturn.fromDy);
+  spritePos = { ...REST_POS };
   interiorReturn = null;
   renderScene();
   setStatus("Back on the town road.");
