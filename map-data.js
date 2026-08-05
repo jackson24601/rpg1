@@ -24,6 +24,12 @@ export const SPECIALS = {
   "5,18": "Witches' Lair",
 };
 
+/**
+ * Special landmarks the party may travel into (not sealed).
+ * TOWN opens the town grid; other specials stay blocked until built.
+ */
+export const ENTERABLE_SPECIALS = new Set(["TOWN"]);
+
 export const START = { x: 3, y: 11 };
 
 /**
@@ -39,8 +45,9 @@ export const NPC_SCENES = {
 };
 
 /**
- * Base terrain for every cell. Specials (red landmark cells) and
- * mountains are impassable for now — specials will be built out later.
+ * Base terrain for every cell. Mountains are impassable. Most special
+ * (red landmark) cells stay sealed until built; ENTERABLE_SPECIALS
+ * (currently TOWN) can be entered from adjacent walkable cells.
  * The party may still begin on Initial Sequence via START.
  */
 const RAW = [
@@ -92,6 +99,9 @@ export function buildMap() {
         specialName ||
         npcScene?.name ||
         (terrain === TERRAIN.special ? "Landmark" : labelFor(terrain));
+      const enterable = Boolean(
+        specialName && ENTERABLE_SPECIALS.has(specialName)
+      );
       cells.push({
         x,
         y,
@@ -99,6 +109,7 @@ export function buildMap() {
         name: resolvedName,
         walkable: terrain !== TERRAIN.mountain && terrain !== TERRAIN.special,
         special: terrain === TERRAIN.special,
+        enterable,
         noSpawn: Boolean(npcScene?.noSpawn),
         npcScene: npcScene?.id || null,
       });

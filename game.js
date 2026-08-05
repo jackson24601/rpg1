@@ -148,7 +148,8 @@ function buildMinimap() {
   cells.forEach((cell) => {
     const tile = document.createElement("div");
     tile.className = `mini-tile mini-tile--${cell.terrain}`;
-    tile.title = cell.name;
+    if (cell.enterable) tile.classList.add("is-enterable");
+    tile.title = cell.enterable ? `${cell.name} (open)` : cell.name;
     tile.setAttribute("role", "gridcell");
     miniEls.set(`${cell.x},${cell.y}`, tile);
     frag.appendChild(tile);
@@ -573,6 +574,28 @@ function atEdge(dx, dy) {
   return false;
 }
 
+function enterTownFromOverworld() {
+  encounterLocked = true;
+  clearEnemies();
+  clearSpawnTimers();
+  held.up = held.down = held.left = held.right = false;
+  setWalkingVisual(false);
+  setStatus("You pass through the town gates…");
+  // Remember the overworld approach cell so leaving town returns nearby.
+  sessionStorage.setItem(
+    OVERWORLD_KEY,
+    JSON.stringify({
+      x: position.x,
+      y: position.y,
+      facing,
+      spritePos,
+    })
+  );
+  window.setTimeout(() => {
+    window.location.href = "town.html";
+  }, 350);
+}
+
 async function transitionScene(dx, dy) {
   const nextX = position.x + dx;
   const nextY = position.y + dy;
@@ -583,11 +606,23 @@ async function transitionScene(dx, dy) {
     return;
   }
 
+  // Enterable landmarks (TOWN) open dedicated scenes from the overworld grid.
+  if (target.enterable && target.name === "TOWN") {
+    isTransitioning = true;
+    setWalkingVisual(true);
+    const exitPos = exitPosForDelta(dx, dy, spritePos);
+    await animateSpriteTo(exitPos, TRANSITION_MS * 0.65);
+    enterTownFromOverworld();
+    return;
+  }
+
   if (!target.walkable) {
-    if (target.special) {
+    if (target.special && !target.enterable) {
       setStatus(`${target.name} is sealed for now. Return when it is ready.`);
-    } else {
+    } else if (!target.special) {
       setStatus("Impassable mountains block your path.");
+    } else {
+      setStatus(`${target.name} lies ahead.`);
     }
     return;
   }
