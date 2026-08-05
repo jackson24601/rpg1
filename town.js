@@ -651,6 +651,28 @@ setStatus(
     : "You enter the town square. Roads lead north to the shops."
 );
 
+// QA / deep-link: ?shop=grocery|armory|magic-shop|heroes-hall
+const shopParam = new URLSearchParams(window.location.search).get("shop");
+if (shopParam && INTERIORS[shopParam]) {
+  let found = null;
+  for (let y = 0; y < TOWN_ROWS; y += 1) {
+    for (let x = 0; x < TOWN_COLS; x += 1) {
+      const cell = townCellAt(x, y);
+      if (cell?.interior === shopParam) {
+        found = { cell, x, y };
+        break;
+      }
+    }
+    if (found) break;
+  }
+  if (found?.cell.outdoorReturn) {
+    const road = found.cell.outdoorReturn;
+    position.x = road.x;
+    position.y = road.y;
+    enterInterior(found.cell, found.x, found.y, road.fromDx, road.fromDy);
+  }
+}
+
 void SCENE_W;
 void TOWN_STATE_KEY;
 void rafId;
