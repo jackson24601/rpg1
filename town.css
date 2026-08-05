@@ -1,0 +1,96 @@
+/* Town-specific overlays on top of game.css */
+
+body.town-page .game-backdrop {
+  background:
+    radial-gradient(ellipse at 40% 20%, rgba(240, 201, 77, 0.12), transparent 45%),
+    radial-gradient(ellipse at 70% 80%, rgba(139, 90, 43, 0.2), transparent 50%),
+    linear-gradient(180deg, #1a2230 0%, #0a101c 55%, #060a14 100%);
+}
+
+.town-minimap {
+  display: grid;
+  grid-template-columns: repeat(3, var(--mini, 18px));
+  grid-template-rows: repeat(3, var(--mini, 18px));
+  gap: 3px;
+  justify-content: center;
+  margin-top: 0.35rem;
+}
+
+.town-mini-tile {
+  width: var(--mini, 18px);
+  height: var(--mini, 18px);
+  border: 1px solid #0b1020;
+  border-radius: 2px;
+  background: #3a4556;
+}
+
+.town-mini-tile--road,
+.town-mini-tile--entrance {
+  background: #8a8070;
+}
+
+.town-mini-tile--building {
+  background: #c62828;
+}
+
+.town-mini-tile--blocked {
+  background: #1a2230;
+}
+
+.town-mini-tile.is-current {
+  outline: 2px solid var(--gold, #f0c94d);
+  outline-offset: 1px;
+}
+
+.town-mini-tile.is-interior-focus {
+  box-shadow: inset 0 0 0 2px #f0c94d;
+}
+
+.town-patron {
+  position: absolute;
+  width: calc(40 / 320 * 100%);
+  height: calc(44 / 224 * 100%);
+  image-rendering: pixelated;
+  animation: party-bob 1.15s ease-in-out infinite;
+  z-index: 2;
+}
+
+.town-patron img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+  object-position: bottom center;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 2px 0 rgba(10, 20, 12, 0.45));
+}
+
+.town-patron.is-flip {
+  transform: scaleX(-1);
+}
+
+.town-patron:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.town-patron:nth-child(3) {
+  animation-delay: 0.35s;
+}
+
+.town-patron:nth-child(4) {
+  animation-delay: 0.55s;
+}
+
+.town-patron:nth-child(5) {
+  animation-delay: 0.25s;
+}
+
+.scene-svg.town-scene text {
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .town-patron {
+    animation: none;
+  }
+}

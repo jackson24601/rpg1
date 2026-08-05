@@ -573,6 +573,28 @@ function atEdge(dx, dy) {
   return false;
 }
 
+function enterTownFromOverworld() {
+  encounterLocked = true;
+  clearEnemies();
+  clearSpawnTimers();
+  held.up = held.down = held.left = held.right = false;
+  setWalkingVisual(false);
+  setStatus("You pass through the town gates…");
+  // Remember the overworld approach cell so leaving town returns nearby.
+  sessionStorage.setItem(
+    OVERWORLD_KEY,
+    JSON.stringify({
+      x: position.x,
+      y: position.y,
+      facing,
+      spritePos,
+    })
+  );
+  window.setTimeout(() => {
+    window.location.href = "town.html";
+  }, 350);
+}
+
 async function transitionScene(dx, dy) {
   const nextX = position.x + dx;
   const nextY = position.y + dy;
@@ -580,6 +602,16 @@ async function transitionScene(dx, dy) {
 
   if (!target) {
     setStatus("The edge of the known world. You cannot go that way.");
+    return;
+  }
+
+  // TOWN opens its own navigable grid (always arrive at the Entrance square).
+  if (target.name === "TOWN") {
+    isTransitioning = true;
+    setWalkingVisual(true);
+    const exitPos = exitPosForDelta(dx, dy, spritePos);
+    await animateSpriteTo(exitPos, TRANSITION_MS * 0.65);
+    enterTownFromOverworld();
     return;
   }
 
