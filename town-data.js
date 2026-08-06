@@ -139,7 +139,16 @@ export const INTERIORS = {
     kind: "shop",
     keeperSprite: "wizard",
     keeperName: "Mage",
+    /** Display-only shelf flavor (not the buy menu). */
     stock: ["Mana Vial", "Crystal", "Staff", "Scroll", "Rune Stone"],
+    /** Purchasable spells: once bought, Int 7+ party members can cast them. */
+    wares: [
+      { id: "restore", name: "Restore", cost: 100 },
+      { id: "fireball", name: "Fireball", cost: 100 },
+      { id: "earthquake", name: "Earthquake", cost: 200 },
+      { id: "cease", name: "Cease", cost: 200 },
+      { id: "summon", name: "Summon", cost: 250 },
+    ],
   },
   "heroes-hall": {
     id: "heroes-hall",

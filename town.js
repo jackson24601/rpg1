@@ -24,8 +24,9 @@ import {
   spriteTransform,
 } from "./scene-render.js";
 import { bindInventoryButton } from "./inventory-ui.js";
-import { buyItem, getGold } from "./inventory.js";
+import { buyItem, getGold, spendGold } from "./inventory.js";
 import { groceryNewsMessage } from "./quests.js";
+import { hasPurchasedSpell, learnSpell } from "./spellbook.js";
 
 const OVERWORLD_KEY = "dragonQuestOverworld";
 const TOWN_STATE_KEY = "dragonQuestTown";
@@ -53,11 +54,12 @@ let interiorId = null;
 /** Outdoor cell to restore when leaving an interior. */
 let interiorReturn = null;
 
-/** Grocery counter dialogue state. */
+/** Shop counter dialogue state. */
 let shopDialogOpen = false;
 let nearGroceryCounter = false;
+let nearMagicCounter = false;
 /** Sprite Y at or above this counts as approaching the counter. */
-const GROCERY_COUNTER_APPROACH_Y = 150;
+const SHOP_COUNTER_APPROACH_Y = 150;
 
 let isTransitioning = false;
 let rafId = 0;
@@ -398,19 +400,97 @@ function showGroceryWelcome() {
   ]);
 }
 
-function checkGroceryCounterApproach() {
-  if (mode !== "interior" || interiorId !== "grocery" || shopDialogOpen) {
+function formatSpellWareLabel(ware) {
+  if (hasPurchasedSpell(ware.id)) {
+    return `${ware.name} (Owned)`;
+  }
+  return `${ware.name} (${ware.cost} Gold)`;
+}
+
+function showMagicShopBuyMenu() {
+  const shop = INTERIORS["magic-shop"];
+  const wares = shop.wares || [];
+  const gold = getGold();
+  showShopDialog(`What can I get for you today? (You have ${gold} Gold)`, [
+    ...wares.map((ware) => ({
+      label: formatSpellWareLabel(ware),
+      onSelect: () => {
+        if (hasPurchasedSpell(ware.id)) {
+          showShopDialog(
+            `You already know ${ware.name}. Anyone with Intelligence 7 or higher can cast it in battle.`,
+            [
+              {
+                label: "See other spells",
+                onSelect: () => showMagicShopBuyMenu(),
+              },
+              { label: "That's all.", onSelect: () => closeShopDialog() },
+            ]
+          );
+          return;
+        }
+        const spent = spendGold(ware.cost);
+        if (!spent.ok) {
+          showShopDialog(
+            `You don't have enough gold for ${ware.name}. It costs ${ware.cost} Gold.`,
+            [
+              {
+                label: "See other spells",
+                onSelect: () => showMagicShopBuyMenu(),
+              },
+              { label: "Never mind.", onSelect: () => closeShopDialog() },
+            ]
+          );
+          return;
+        }
+        learnSpell(ware.id);
+        showShopDialog(
+          `Purchased ${ware.name} for ${ware.cost} Gold. Anyone with Intelligence 7 or higher can cast it in battle. You now have ${spent.inventory.gold} Gold.`,
+          [
+            {
+              label: "Buy another spell",
+              onSelect: () => showMagicShopBuyMenu(),
+            },
+            { label: "That's all.", onSelect: () => closeShopDialog() },
+          ]
+        );
+        setStatus(
+          `Learned ${ware.name}. Gold remaining: ${spent.inventory.gold}.`
+        );
+      },
+    })),
+    {
+      label: "Nothing right now.",
+      onSelect: () => closeShopDialog(),
+    },
+  ]);
+}
+
+function showMagicShopWelcome() {
+  showMagicShopBuyMenu();
+}
+
+function checkShopCounterApproach() {
+  if (mode !== "interior" || shopDialogOpen) return;
+
+  const atCounter = spritePos.y <= SHOP_COUNTER_APPROACH_Y;
+
+  if (interiorId === "grocery") {
+    if (atCounter && !nearGroceryCounter) {
+      nearGroceryCounter = true;
+      showGroceryWelcome();
+      return;
+    }
+    if (!atCounter) nearGroceryCounter = false;
     return;
   }
 
-  const atCounter = spritePos.y <= GROCERY_COUNTER_APPROACH_Y;
-  if (atCounter && !nearGroceryCounter) {
-    nearGroceryCounter = true;
-    showGroceryWelcome();
-    return;
-  }
-  if (!atCounter) {
-    nearGroceryCounter = false;
+  if (interiorId === "magic-shop") {
+    if (atCounter && !nearMagicCounter) {
+      nearMagicCounter = true;
+      showMagicShopWelcome();
+      return;
+    }
+    if (!atCounter) nearMagicCounter = false;
   }
 }
 
@@ -428,6 +508,7 @@ function enterInterior(buildingCell, buildingX, buildingY, fromDx, fromDy) {
   facing = facingFromDelta(fromDx, fromDy);
   spritePos = { x: REST_POS.x, y: SCENE_H - SPRITE_H - 10 };
   nearGroceryCounter = false;
+  nearMagicCounter = false;
   closeShopDialog();
   renderScene();
   const interior = INTERIORS[interiorId];
@@ -436,13 +517,16 @@ function enterInterior(buildingCell, buildingX, buildingY, fromDx, fromDy) {
       ? "You step into Hero's Hall. Patrons mill about the tavern."
       : interiorId === "grocery"
         ? "You enter the Grocery. Approach the counter to speak with the grocer."
-        : `You enter the ${interior?.name || "shop"}. Goods line the shelves behind the counter.`
+        : interiorId === "magic-shop"
+          ? "You enter the Magic Shop. Approach the counter to speak with the mage."
+          : `You enter the ${interior?.name || "shop"}. Goods line the shelves behind the counter.`
   );
 }
 
 function exitInterior() {
   closeShopDialog();
   nearGroceryCounter = false;
+  nearMagicCounter = false;
   if (!interiorReturn) {
     mode = "outdoor";
     interiorId = null;
@@ -566,7 +650,7 @@ function tick(ts) {
   const { dx, dy } = currentDelta();
   if (!dx && !dy) {
     setWalkingVisual(false);
-    checkGroceryCounterApproach();
+    checkShopCounterApproach();
     return;
   }
 
@@ -581,7 +665,7 @@ function tick(ts) {
   const hitEdgeY = clamped.y !== nextY;
   spritePos = clamped;
   placeSpriteDom(spritePos.x, spritePos.y);
-  checkGroceryCounterApproach();
+  checkShopCounterApproach();
   if (shopDialogOpen) return;
 
   const edgeDx = hitEdgeX ? dx : 0;
