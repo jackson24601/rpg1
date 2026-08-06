@@ -9,6 +9,7 @@ import {
   applySkill,
   STAMINA_LOSS_PER_ROUND,
   createSummon,
+  MIN_INTELLIGENCE_TO_CAST,
 } from "./characters.js";
 import {
   buildEncounter,
@@ -24,6 +25,7 @@ import {
   clearPartyCombatState,
   resetStaminaRegenClock,
 } from "./party-state.js";
+import { getPurchasedSpells } from "./spellbook.js";
 
 const BATTLE_KEY = "dragonQuestBattle";
 const PARTY_KEY = "dragonQuestParty";
@@ -175,6 +177,33 @@ function ensureInstanceIds(combatants, prefix) {
   });
 }
 
+/** Merge Magic Shop purchases onto casters with enough Intelligence. */
+function applyPurchasedSpells(combatant) {
+  if (!combatant) return combatant;
+  const intelligence = Number(combatant.intelligence);
+  if (
+    !Number.isFinite(intelligence) ||
+    intelligence < MIN_INTELLIGENCE_TO_CAST
+  ) {
+    return combatant;
+  }
+  const purchased = getPurchasedSpells();
+  if (!purchased.length) return combatant;
+
+  const known = new Set(combatant.spells || []);
+  const names = new Set(combatant.spellNames || []);
+  for (const spellId of purchased) {
+    const spell = getSpell(spellId);
+    if (!spell || known.has(spellId)) continue;
+    known.add(spellId);
+    names.add(spell.name);
+  }
+  combatant.spells = [...known];
+  combatant.spellNames = [...names];
+  combatant.canCast = combatant.spells.length > 0;
+  return combatant;
+}
+
 function buildPartyCombatants() {
   const saved = loadPartyCombatState();
   const members = loadPartyIds();
@@ -182,6 +211,7 @@ function buildPartyCombatants() {
   const finalize = (c, i) => {
     if (!c) return null;
     applyPersistedVitals(c, saved[c.id]);
+    applyPurchasedSpells(c);
     c.instanceId = `hero-${i}`;
     c.kind = "hero";
     c.src = `assets/overworld/${c.id}.png`;
@@ -455,7 +485,12 @@ function renderActionMenu(actor) {
   (actor.spells || []).forEach((spellId) => {
     const spell = getSpell(spellId);
     if (!spell) return;
-    if (!actor.canCast && (actor.intelligence ?? 0) < 7) return;
+    if (
+      !actor.canCast &&
+      (actor.intelligence ?? 0) < MIN_INTELLIGENCE_TO_CAST
+    ) {
+      return;
+    }
     actionMenu.appendChild(
       makeActionButton(spell.name, () => selectSpell(actor, spellId))
     );
@@ -732,9 +767,7 @@ async function resolveAttackAction(actor, action, side) {
   }
 
   const baseDamage =
-    side === "enemy" && typeof actor.attackDamage === "number"
-      ? actor.attackDamage
-      : undefined;
+    typeof actor.attackDamage === "number" ? actor.attackDamage : undefined;
   let damage =
     baseDamage != null
       ? resolveAttackDamage(move, true, baseDamage)
@@ -808,8 +841,11 @@ async function resolveSpellAction(actor, action) {
   }
 
   if (spell.effect.type === "summonAlly" && result.summon) {
-    result.summon.src = "assets/enemies/goblin.png";
-    setLog(`${actor.name} summons a Goblin! It can be commanded next turn.`);
+    const ally = result.summon;
+    ally.src = ally.src || `assets/enemies/${ally.id}.png`;
+    setLog(
+      `${actor.name} summons a ${ally.name}! It can act starting next turn.`
+    );
   } else if (spell.effect.type === "damageTarget" || spell.effect.type === "damageAllOpponents") {
     const dmg = result.damage ?? result.totalDamage ?? 0;
     setLog(`${spell.name} deals ${dmg} damage!`);
@@ -828,7 +864,11 @@ async function resolveSpellAction(actor, action) {
   } else if (spell.effect.type === "allDamageTakenReduceNextTurn") {
     setLog(`Verdant energy will soften all wounds next turn!`);
   } else if (spell.effect.type === "preventTargetAttackNextTurn") {
-    setLog(`${context.target?.name || "The foe"} is held fast!`);
+    setLog(
+      spell.id === "cease"
+        ? `${context.target?.name || "The foe"} ceases and will miss their next turn!`
+        : `${context.target?.name || "The foe"} is held fast!`
+    );
   } else if (spell.effect.type === "preventTargetDamageTurns") {
     setLog(`${context.target?.name || "An ally"} is warded from harm!`);
   } else if (spell.effect.type === "restoreStaminaFull") {

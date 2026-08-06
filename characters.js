@@ -143,6 +143,25 @@ export const SPELLS = {
       "Summon a level 1 Goblin ally. You may command it starting on the next turn.",
     effect: { type: "summonAlly", summonId: "goblin-level-1" },
   },
+  earthquake: {
+    id: "earthquake",
+    name: "Earthquake",
+    description: "Deal 10 damage to every enemy.",
+    effect: { type: "damageAllOpponents", amount: 10 },
+  },
+  cease: {
+    id: "cease",
+    name: "Cease",
+    description: "Prevent one chosen enemy from taking their next turn.",
+    effect: { type: "preventTargetAttackNextTurn" },
+  },
+  summon: {
+    id: "summon",
+    name: "Summon",
+    description:
+      "Raise a Demon ally. It attacks each turn (75% chance to deal 5 damage).",
+    effect: { type: "summonAlly", summonId: "demon" },
+  },
 };
 
 /**
@@ -153,11 +172,13 @@ export const SPELLS = {
  *   level: number,
  *   hitPoints: number,
  *   attack: number,
+ *   attackDamage?: number,
  *   attackTypes: string[],
  *   defend?: number|null,
  *   stamina?: number|null,
  *   intelligence?: number|null,
- *   defendType?: string|null
+ *   defendType?: string|null,
+ *   src?: string
  * }>}
  */
 export const SUMMONS = {
@@ -172,6 +193,22 @@ export const SUMMONS = {
     stamina: null,
     intelligence: null,
     defendType: null,
+    src: "assets/enemies/goblin.png",
+  },
+  demon: {
+    id: "demon",
+    name: "Demon",
+    level: 1,
+    hitPoints: 10,
+    /** 7.5 / 10 = 75% chance to hit. */
+    attack: 7.5,
+    attackDamage: 5,
+    attackTypes: ["Claw"],
+    defend: null,
+    stamina: null,
+    intelligence: null,
+    defendType: null,
+    src: "assets/enemies/demon.png",
   },
 };
 
@@ -721,6 +758,8 @@ export function createSummon(summonId, { controllerId } = {}) {
     maxHitPoints: template.hitPoints,
     hitPoints: template.hitPoints,
     attack: template.attack,
+    attackDamage:
+      typeof template.attackDamage === "number" ? template.attackDamage : null,
     defend: template.defend ?? null,
     maxStamina: template.stamina ?? null,
     stamina: template.stamina ?? null,
@@ -728,6 +767,7 @@ export function createSummon(summonId, { controllerId } = {}) {
     attackTypes: [...template.attackTypes],
     attackType: template.attackTypes[0] || null,
     defendType: template.defendType ?? null,
+    src: template.src || `assets/enemies/${template.id}.png`,
     spells: [],
     skills: [],
     canCast: false,

@@ -216,7 +216,7 @@ function renderShopInterior(interiorId, leaderId, facing, spritePos) {
       </g>
       ${labelBanner(160, 40, shop.name)}
       ${
-        interiorId === "grocery"
+        interiorId === "grocery" || interiorId === "magic-shop"
           ? ""
           : `<text x="160" y="158" text-anchor="middle" font-family="VT323, monospace" font-size="12" fill="#f3e6b0">
         ${esc(shop.keeperName)} — ${esc(shop.stock.join(" · "))}
