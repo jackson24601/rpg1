@@ -15,7 +15,7 @@ import {
   encounterCountFor,
   pickLowestHpTarget,
 } from "./combat-enemies.js";
-import { addGold, roll2d6 } from "./inventory.js";
+import { addGold, roll2d6, INVENTORY_CONSUMED_EVENT } from "./inventory.js";
 import { bindInventoryButton } from "./inventory-ui.js";
 import {
   loadPartyCombatState,
@@ -935,4 +935,43 @@ function init() {
 }
 
 bindInventoryButton("#inventoryBtn");
+
+/** Food eaten from Inventory heals every living party member in this fight. */
+window.addEventListener(INVENTORY_CONSUMED_EVENT, (event) => {
+  const effect = event.detail?.effect;
+  if (!effect || !party.length) return;
+
+  party.forEach((hero) => {
+    if (!hero) return;
+    const hpGain = Math.max(0, Number(effect.hitPoints) || 0);
+    const staGain = Math.max(0, Number(effect.stamina) || 0);
+    if (hero.maxHitPoints != null) {
+      hero.hitPoints = Math.min(
+        hero.maxHitPoints,
+        Math.max(0, Number(hero.hitPoints) || 0) + hpGain
+      );
+    }
+    if (hero.maxStamina != null && hero.stamina != null) {
+      hero.stamina = Math.min(
+        hero.maxStamina,
+        Math.max(0, Number(hero.stamina) || 0) + staGain
+      );
+    }
+    hero.alive = hero.hitPoints > 0;
+  });
+
+  renderFighters();
+  const item = event.detail?.item || "food";
+  setLog(
+    `The party eats ${item}! Everyone recovers ${effect.hitPoints} HP and ${effect.stamina} stamina.`
+  );
+  // Keep the current command actor panel in sync if mid-command.
+  if (phase === "command" || phase === "target") {
+    const actor = party[commandIndex];
+    if (actor && actor.alive) {
+      actorPanel.textContent = `${actor.name}'s turn — HP ${actor.hitPoints}/${actor.maxHitPoints} · STA ${actor.stamina ?? "—"}/${actor.maxStamina ?? "—"}`;
+    }
+  }
+});
+
 init();
