@@ -4,6 +4,7 @@ import {
   formatCombatStats,
 } from "./characters.js";
 import { clearPartyCombatState } from "./party-state.js";
+import { clearQuests } from "./quests.js";
 
 const MAX_PARTY = 3;
 const selectedIds = [];
@@ -156,8 +157,9 @@ confirmBtn.addEventListener("click", () => {
   sessionStorage.setItem("dragonQuestParty", JSON.stringify(party));
   // New party starts at full vitals — drop any leftover combat HP/stamina.
   clearPartyCombatState();
-  // Fresh adventure inventory.
+  // Fresh adventure inventory and quests.
   sessionStorage.removeItem("dragonQuestInventory");
+  clearQuests();
   setDetail(
     `Party ready: ${party.map((member) => member.name).join(", ")}. Entering the overworld…`
   );

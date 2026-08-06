@@ -25,6 +25,7 @@ import {
 } from "./scene-render.js";
 import { bindInventoryButton } from "./inventory-ui.js";
 import { buyItem, getGold } from "./inventory.js";
+import { groceryNewsMessage } from "./quests.js";
 
 const OVERWORLD_KEY = "dragonQuestOverworld";
 const TOWN_STATE_KEY = "dragonQuestTown";
@@ -389,10 +390,9 @@ function showGroceryWelcome() {
     {
       label: "Any news?",
       onSelect: () => {
-        showShopDialog(
-          "Travelers say outlaws still haunt the woods north of town. Be careful on the road.",
-          [{ label: "I'll keep an eye out.", onSelect: () => closeShopDialog() }]
-        );
+        showShopDialog(groceryNewsMessage(), [
+          { label: "I'll keep an eye out.", onSelect: () => closeShopDialog() },
+        ]);
       },
     },
   ]);
