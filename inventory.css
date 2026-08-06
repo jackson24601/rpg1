@@ -76,6 +76,57 @@
   white-space: pre-wrap;
 }
 
+.inventory-modal__items {
+  list-style: none;
+  margin: 0.25rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.inventory-modal__item {
+  appearance: none;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.1rem;
+  font: inherit;
+  font-size: 1.25rem;
+  text-align: left;
+  color: var(--cream, #f3e6b0);
+  background: linear-gradient(180deg, #243868 0%, #1a2d62 100%);
+  border: 2px solid var(--gold, #f0c94d);
+  border-radius: 4px;
+  padding: 0.4rem 0.55rem;
+  cursor: pointer;
+}
+
+.inventory-modal__item:hover,
+.inventory-modal__item:focus-visible {
+  outline: none;
+  background: linear-gradient(180deg, #2f4a88 0%, #243868 100%);
+  box-shadow: 0 0 0 2px rgba(240, 201, 77, 0.35);
+}
+
+.inventory-modal__item--inert {
+  border-color: #4a5a80;
+  background: transparent;
+  cursor: default;
+}
+
+.inventory-modal__item-hint {
+  font-size: 0.95rem;
+  color: var(--muted, #9eb0d8);
+}
+
+.inventory-modal__message {
+  margin: 0;
+  font-size: 1.15rem;
+  color: #b8f0c0;
+  line-height: 1.25;
+}
+
 .inventory-modal__footer {
   display: flex;
   justify-content: center;

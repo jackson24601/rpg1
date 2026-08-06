@@ -1,6 +1,11 @@
-/** Shared Inventory button + modal for overworld and battle. */
+/** Shared Inventory button + modal for overworld, town, and battle. */
 
-import { formatInventoryLines, loadInventory } from "./inventory.js";
+import {
+  loadInventory,
+  isConsumable,
+  getConsumableEffect,
+  consumeInventoryItem,
+} from "./inventory.js";
 
 const MODAL_ID = "inventoryModal";
 
@@ -22,6 +27,7 @@ function ensureModal() {
         <button type="button" class="inventory-modal__close" data-inventory-close aria-label="Close inventory">✕</button>
       </header>
       <div class="inventory-modal__body" id="inventoryModalBody"></div>
+      <p class="inventory-modal__message" id="inventoryModalMessage" hidden></p>
       <footer class="inventory-modal__footer">
         <button type="button" class="inventory-modal__ok" data-inventory-close>Close</button>
       </footer>
@@ -39,11 +45,81 @@ function ensureModal() {
   return modal;
 }
 
+function setInventoryMessage(text) {
+  const msg = document.getElementById("inventoryModalMessage");
+  if (!msg) return;
+  if (!text) {
+    msg.hidden = true;
+    msg.textContent = "";
+    return;
+  }
+  msg.hidden = false;
+  msg.textContent = text;
+}
+
+function renderInventoryBody() {
+  const body = document.getElementById("inventoryModalBody");
+  if (!body) return;
+  const inventory = loadInventory();
+
+  const parts = [`<p class="inventory-modal__line">Gold: ${inventory.gold}</p>`];
+  if (!inventory.items.length) {
+    parts.push(`<p class="inventory-modal__line">Items: none</p>`);
+  } else {
+    parts.push(`<p class="inventory-modal__line">Items:</p>`);
+    parts.push(`<ul class="inventory-modal__items">`);
+    inventory.items.forEach((item, index) => {
+      const consumable = isConsumable(item);
+      const effect = getConsumableEffect(item);
+      const title = consumable
+        ? `Eat ${item}: +${effect.hitPoints} HP and +${effect.stamina} STA to the whole party`
+        : item;
+      if (consumable) {
+        parts.push(`
+          <li>
+            <button type="button" class="inventory-modal__item" data-item-index="${index}" title="${title}">
+              ${item}
+              <span class="inventory-modal__item-hint">(+${effect.hitPoints} HP / +${effect.stamina} STA — click to eat)</span>
+            </button>
+          </li>
+        `);
+      } else {
+        parts.push(`
+          <li>
+            <span class="inventory-modal__item inventory-modal__item--inert">${item}</span>
+          </li>
+        `);
+      }
+    });
+    parts.push(`</ul>`);
+  }
+
+  body.innerHTML = parts.join("");
+
+  body.querySelectorAll("[data-item-index]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const index = Number(btn.dataset.itemIndex);
+      const result = consumeInventoryItem(index);
+      if (!result.ok) {
+        setInventoryMessage(
+          result.reason === "not_consumable"
+            ? "That item can't be used right now."
+            : "Couldn't use that item."
+        );
+        return;
+      }
+      setInventoryMessage(
+        `The party eats the ${result.item}! Everyone recovers ${result.effect.hitPoints} HP and ${result.effect.stamina} stamina.`
+      );
+      renderInventoryBody();
+    });
+  });
+}
+
 export function openInventoryModal() {
   const modal = ensureModal();
-  const body = modal.querySelector("#inventoryModalBody");
-  const lines = formatInventoryLines(loadInventory());
-  body.innerHTML = lines.map((line) => `<p class="inventory-modal__line">${line}</p>`).join("");
+  setInventoryMessage("");
+  renderInventoryBody();
   modal.hidden = false;
   modal.querySelector("[data-inventory-close]")?.focus?.();
 }
@@ -51,6 +127,7 @@ export function openInventoryModal() {
 export function closeInventoryModal() {
   const modal = document.getElementById(MODAL_ID);
   if (modal) modal.hidden = true;
+  setInventoryMessage("");
 }
 
 /**
