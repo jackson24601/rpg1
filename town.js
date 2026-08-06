@@ -24,6 +24,7 @@ import {
   spriteTransform,
 } from "./scene-render.js";
 import { bindInventoryButton } from "./inventory-ui.js";
+import { buyItem, getGold } from "./inventory.js";
 
 const OVERWORLD_KEY = "dragonQuestOverworld";
 const TOWN_STATE_KEY = "dragonQuestTown";
@@ -339,16 +340,51 @@ function showShopDialog(text, choices) {
   shopDialogChoices.querySelector("button")?.focus();
 }
 
+function formatWareLabel(ware) {
+  return `${ware.name} (${ware.cost} Gold)`;
+}
+
+function showGroceryBuyMenu() {
+  const grocery = INTERIORS.grocery;
+  const wares = grocery.wares || [];
+  const gold = getGold();
+  showShopDialog(`What will you buy? (You have ${gold} Gold)`, [
+    ...wares.map((ware) => ({
+      label: formatWareLabel(ware),
+      onSelect: () => {
+        const result = buyItem(ware.name, ware.cost);
+        if (!result.ok) {
+          showShopDialog(
+            `You don't have enough gold for ${ware.name}. It costs ${ware.cost} Gold.`,
+            [
+              { label: "See other goods", onSelect: () => showGroceryBuyMenu() },
+              { label: "Never mind.", onSelect: () => closeShopDialog() },
+            ]
+          );
+          return;
+        }
+        showShopDialog(
+          `Purchased ${ware.name} for ${ware.cost} Gold. You now have ${result.inventory.gold} Gold.`,
+          [
+            { label: "Buy something else", onSelect: () => showGroceryBuyMenu() },
+            { label: "That's all.", onSelect: () => closeShopDialog() },
+          ]
+        );
+        setStatus(`Bought ${ware.name}. Gold remaining: ${result.inventory.gold}.`);
+      },
+    })),
+    {
+      label: "Never mind.",
+      onSelect: () => showGroceryWelcome(),
+    },
+  ]);
+}
+
 function showGroceryWelcome() {
   showShopDialog("Welcome! What can I do for you?", [
     {
-      label: "I'd like to buy something,",
-      onSelect: () => {
-        showShopDialog(
-          "I've got fresh goods when you're ready to trade. (Buying comes soon.)",
-          [{ label: "Thanks.", onSelect: () => closeShopDialog() }]
-        );
-      },
+      label: "I'd like to buy something.",
+      onSelect: () => showGroceryBuyMenu(),
     },
     {
       label: "Any news?",

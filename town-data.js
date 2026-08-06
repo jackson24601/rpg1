@@ -116,7 +116,14 @@ export const INTERIORS = {
     kind: "shop",
     keeperSprite: "bard",
     keeperName: "Grocer",
-    stock: ["Bread", "Cheese", "Apples", "Dried Meat", "Herbs"],
+    /** Display-only shelf flavor (not the buy menu). */
+    stock: ["Apples", "Bread", "Meat"],
+    /** Purchasable wares: name + gold cost. */
+    wares: [
+      { id: "apples", name: "Apples", cost: 5 },
+      { id: "bread", name: "Bread", cost: 10 },
+      { id: "meat", name: "Meat", cost: 20 },
+    ],
   },
   armory: {
     id: "armory",
