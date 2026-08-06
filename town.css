@@ -89,8 +89,77 @@ body.town-page .game-backdrop {
   pointer-events: none;
 }
 
+.shop-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 1rem 1rem 1.5rem;
+  background: rgba(6, 10, 20, 0.45);
+}
+
+.shop-dialog[hidden] {
+  display: none;
+}
+
+.shop-dialog__panel {
+  width: min(520px, 100%);
+  display: grid;
+  gap: 0.75rem;
+  animation: shop-dialog-in 0.28s ease-out;
+}
+
+.shop-dialog__text {
+  margin: 0;
+  font-size: 1.35rem;
+  line-height: 1.25;
+  color: var(--cream, #f3e6b0);
+}
+
+.shop-dialog__choices {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.shop-dialog__choice {
+  appearance: none;
+  font: inherit;
+  font-size: 1.2rem;
+  text-align: left;
+  color: var(--cream, #f3e6b0);
+  background: linear-gradient(180deg, #243868 0%, #1a2d62 100%);
+  border: 2px solid var(--gold, #f0c94d);
+  border-radius: 4px;
+  padding: 0.45rem 0.7rem;
+  cursor: pointer;
+}
+
+.shop-dialog__choice:hover,
+.shop-dialog__choice:focus-visible {
+  outline: none;
+  background: linear-gradient(180deg, #2f4a88 0%, #243868 100%);
+  box-shadow: 0 0 0 2px rgba(240, 201, 77, 0.35);
+}
+
+@keyframes shop-dialog-in {
+  from {
+    opacity: 0;
+    translate: 0 10px;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .town-patron {
+    animation: none;
+  }
+
+  .shop-dialog__panel {
     animation: none;
   }
 }

@@ -24,6 +24,8 @@ import {
   spriteTransform,
 } from "./scene-render.js";
 import { bindInventoryButton } from "./inventory-ui.js";
+import { buyItem, getGold } from "./inventory.js";
+import { groceryNewsMessage } from "./quests.js";
 
 const OVERWORLD_KEY = "dragonQuestOverworld";
 const TOWN_STATE_KEY = "dragonQuestTown";
@@ -37,6 +39,9 @@ const coordsLabel = document.getElementById("coordsLabel");
 const statusLine = document.getElementById("statusLine");
 const partyStrip = document.getElementById("partyStrip");
 const townMinimap = document.getElementById("townMinimap");
+const shopDialog = document.getElementById("shopDialog");
+const shopDialogText = document.getElementById("shopDialogText");
+const shopDialogChoices = document.getElementById("shopDialogChoices");
 
 const position = { ...TOWN_ENTRANCE };
 let facing = "up";
@@ -47,6 +52,12 @@ let mode = "outdoor";
 let interiorId = null;
 /** Outdoor cell to restore when leaving an interior. */
 let interiorReturn = null;
+
+/** Grocery counter dialogue state. */
+let shopDialogOpen = false;
+let nearGroceryCounter = false;
+/** Sprite Y at or above this counts as approaching the counter. */
+const GROCERY_COUNTER_APPROACH_Y = 150;
 
 let isTransitioning = false;
 let rafId = 0;
@@ -301,6 +312,108 @@ function leaveTown() {
   window.location.href = "game.html";
 }
 
+function clearHeldMovement() {
+  held.up = held.down = held.left = held.right = false;
+  setWalkingVisual(false);
+  lastTs = 0;
+}
+
+function closeShopDialog() {
+  shopDialogOpen = false;
+  shopDialog.hidden = true;
+  shopDialogChoices.innerHTML = "";
+}
+
+function showShopDialog(text, choices) {
+  shopDialogOpen = true;
+  clearHeldMovement();
+  shopDialogText.textContent = text;
+  shopDialogChoices.innerHTML = "";
+  choices.forEach((choice) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "shop-dialog__choice";
+    btn.textContent = choice.label;
+    btn.addEventListener("click", () => choice.onSelect());
+    shopDialogChoices.appendChild(btn);
+  });
+  shopDialog.hidden = false;
+  shopDialogChoices.querySelector("button")?.focus();
+}
+
+function formatWareLabel(ware) {
+  return `${ware.name} (${ware.cost} Gold)`;
+}
+
+function showGroceryBuyMenu() {
+  const grocery = INTERIORS.grocery;
+  const wares = grocery.wares || [];
+  const gold = getGold();
+  showShopDialog(`What will you buy? (You have ${gold} Gold)`, [
+    ...wares.map((ware) => ({
+      label: formatWareLabel(ware),
+      onSelect: () => {
+        const result = buyItem(ware.name, ware.cost);
+        if (!result.ok) {
+          showShopDialog(
+            `You don't have enough gold for ${ware.name}. It costs ${ware.cost} Gold.`,
+            [
+              { label: "See other goods", onSelect: () => showGroceryBuyMenu() },
+              { label: "Never mind.", onSelect: () => closeShopDialog() },
+            ]
+          );
+          return;
+        }
+        showShopDialog(
+          `Purchased ${ware.name} for ${ware.cost} Gold. You now have ${result.inventory.gold} Gold.`,
+          [
+            { label: "Buy something else", onSelect: () => showGroceryBuyMenu() },
+            { label: "That's all.", onSelect: () => closeShopDialog() },
+          ]
+        );
+        setStatus(`Bought ${ware.name}. Gold remaining: ${result.inventory.gold}.`);
+      },
+    })),
+    {
+      label: "Never mind.",
+      onSelect: () => showGroceryWelcome(),
+    },
+  ]);
+}
+
+function showGroceryWelcome() {
+  showShopDialog("Welcome! What can I do for you?", [
+    {
+      label: "I'd like to buy something.",
+      onSelect: () => showGroceryBuyMenu(),
+    },
+    {
+      label: "Any news?",
+      onSelect: () => {
+        showShopDialog(groceryNewsMessage(), [
+          { label: "I'll keep an eye out.", onSelect: () => closeShopDialog() },
+        ]);
+      },
+    },
+  ]);
+}
+
+function checkGroceryCounterApproach() {
+  if (mode !== "interior" || interiorId !== "grocery" || shopDialogOpen) {
+    return;
+  }
+
+  const atCounter = spritePos.y <= GROCERY_COUNTER_APPROACH_Y;
+  if (atCounter && !nearGroceryCounter) {
+    nearGroceryCounter = true;
+    showGroceryWelcome();
+    return;
+  }
+  if (!atCounter) {
+    nearGroceryCounter = false;
+  }
+}
+
 function enterInterior(buildingCell, buildingX, buildingY, fromDx, fromDy) {
   mode = "interior";
   interiorId = buildingCell.interior;
@@ -314,16 +427,22 @@ function enterInterior(buildingCell, buildingX, buildingY, fromDx, fromDy) {
   };
   facing = facingFromDelta(fromDx, fromDy);
   spritePos = { x: REST_POS.x, y: SCENE_H - SPRITE_H - 10 };
+  nearGroceryCounter = false;
+  closeShopDialog();
   renderScene();
   const interior = INTERIORS[interiorId];
   setStatus(
     interior?.kind === "tavern"
       ? "You step into Hero's Hall. Patrons mill about the tavern."
-      : `You enter the ${interior?.name || "shop"}. Goods line the shelves behind the counter.`
+      : interiorId === "grocery"
+        ? "You enter the Grocery. Approach the counter to speak with the grocer."
+        : `You enter the ${interior?.name || "shop"}. Goods line the shelves behind the counter.`
   );
 }
 
 function exitInterior() {
+  closeShopDialog();
+  nearGroceryCounter = false;
   if (!interiorReturn) {
     mode = "outdoor";
     interiorId = null;
@@ -337,9 +456,9 @@ function exitInterior() {
   interiorId = null;
   position.x = interiorReturn.x;
   position.y = interiorReturn.y;
-  // Step back onto the road facing away from the doorway.
+  // Return to the center of the road, facing away from the shop doorway.
   facing = facingFromDelta(-interiorReturn.fromDx, -interiorReturn.fromDy);
-  spritePos = entryPosForDelta(-interiorReturn.fromDx, -interiorReturn.fromDy);
+  spritePos = { ...REST_POS };
   interiorReturn = null;
   renderScene();
   setStatus("Back on the town road.");
@@ -438,7 +557,7 @@ async function tryEdgeTransition(dx, dy) {
 
 function tick(ts) {
   rafId = requestAnimationFrame(tick);
-  if (isTransitioning) return;
+  if (isTransitioning || shopDialogOpen) return;
 
   if (!lastTs) lastTs = ts;
   const dt = Math.min(0.05, (ts - lastTs) / 1000);
@@ -447,6 +566,7 @@ function tick(ts) {
   const { dx, dy } = currentDelta();
   if (!dx && !dy) {
     setWalkingVisual(false);
+    checkGroceryCounterApproach();
     return;
   }
 
@@ -461,6 +581,8 @@ function tick(ts) {
   const hitEdgeY = clamped.y !== nextY;
   spritePos = clamped;
   placeSpriteDom(spritePos.x, spritePos.y);
+  checkGroceryCounterApproach();
+  if (shopDialogOpen) return;
 
   const edgeDx = hitEdgeX ? dx : 0;
   const edgeDy = hitEdgeY ? dy : 0;
@@ -493,6 +615,7 @@ function bindControls() {
     const dir = facingFromDelta(dx, dy);
     const press = (event) => {
       event.preventDefault();
+      if (shopDialogOpen) return;
       btn.setPointerCapture?.(event.pointerId);
       setHeld(dir, true);
     };
@@ -508,6 +631,13 @@ function bindControls() {
   });
 
   window.addEventListener("keydown", (event) => {
+    if (shopDialogOpen) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeShopDialog();
+      }
+      return;
+    }
     const dir = KEY_DIR[event.key];
     if (!dir) return;
     if (event.repeat) {
@@ -518,6 +648,7 @@ function bindControls() {
     setHeld(dir, true);
   });
   window.addEventListener("keyup", (event) => {
+    if (shopDialogOpen) return;
     const dir = KEY_DIR[event.key];
     if (!dir) return;
     event.preventDefault();
@@ -555,6 +686,28 @@ setStatus(
     ? `${leader.name}'s party enters the town square. Roads lead north to the shops.`
     : "You enter the town square. Roads lead north to the shops."
 );
+
+// QA / deep-link: ?shop=grocery|armory|magic-shop|heroes-hall
+const shopParam = new URLSearchParams(window.location.search).get("shop");
+if (shopParam && INTERIORS[shopParam]) {
+  let found = null;
+  for (let y = 0; y < TOWN_ROWS; y += 1) {
+    for (let x = 0; x < TOWN_COLS; x += 1) {
+      const cell = townCellAt(x, y);
+      if (cell?.interior === shopParam) {
+        found = { cell, x, y };
+        break;
+      }
+    }
+    if (found) break;
+  }
+  if (found?.cell.outdoorReturn) {
+    const road = found.cell.outdoorReturn;
+    position.x = road.x;
+    position.y = road.y;
+    enterInterior(found.cell, found.x, found.y, road.fromDx, road.fromDy);
+  }
+}
 
 void SCENE_W;
 void TOWN_STATE_KEY;

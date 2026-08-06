@@ -215,9 +215,13 @@ function renderShopInterior(interiorId, leaderId, facing, spritePos) {
           style="image-rendering: pixelated" preserveAspectRatio="xMidYMax meet" />
       </g>
       ${labelBanner(160, 40, shop.name)}
-      <text x="160" y="158" text-anchor="middle" font-family="VT323, monospace" font-size="12" fill="#f3e6b0">
+      ${
+        interiorId === "grocery"
+          ? ""
+          : `<text x="160" y="158" text-anchor="middle" font-family="VT323, monospace" font-size="12" fill="#f3e6b0">
         ${esc(shop.keeperName)} — ${esc(shop.stock.join(" · "))}
-      </text>
+      </text>`
+      }
       <text x="160" y="210" text-anchor="middle" font-family="VT323, monospace" font-size="11" fill="#c8b890">
         Walk south to leave the shop
       </text>

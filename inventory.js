@@ -52,6 +52,57 @@ export function addGold(amount) {
   return { inventory, gained };
 }
 
+/**
+ * Spend gold if the party can afford it.
+ * @returns {{ ok: boolean, inventory: Inventory, spent: number, reason?: string }}
+ */
+export function spendGold(amount) {
+  const inventory = loadInventory();
+  const cost = Math.max(0, Math.floor(Number(amount) || 0));
+  if (cost <= 0) {
+    return { ok: true, inventory, spent: 0 };
+  }
+  if (inventory.gold < cost) {
+    return {
+      ok: false,
+      inventory,
+      spent: 0,
+      reason: "not_enough_gold",
+    };
+  }
+  inventory.gold -= cost;
+  saveInventory(inventory);
+  return { ok: true, inventory, spent: cost };
+}
+
+/** Add a named item to the inventory list. */
+export function addItem(itemName) {
+  const inventory = loadInventory();
+  const name = String(itemName || "").trim();
+  if (!name) return { inventory, added: null };
+  inventory.items.push(name);
+  saveInventory(inventory);
+  return { inventory, added: name };
+}
+
+/**
+ * Buy an item for `cost` gold if affordable.
+ * @returns {{ ok: boolean, inventory: Inventory, reason?: string }}
+ */
+export function buyItem(itemName, cost) {
+  const price = Math.max(0, Math.floor(Number(cost) || 0));
+  const preview = loadInventory();
+  if (preview.gold < price) {
+    return { ok: false, inventory: preview, reason: "not_enough_gold" };
+  }
+  const spent = spendGold(price);
+  if (!spent.ok) {
+    return { ok: false, inventory: spent.inventory, reason: spent.reason };
+  }
+  const { inventory } = addItem(itemName);
+  return { ok: true, inventory };
+}
+
 export function getGold() {
   return loadInventory().gold;
 }
